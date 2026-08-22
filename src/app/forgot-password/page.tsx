@@ -31,9 +31,8 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-900 text-lg font-semibold text-white">
-            CM
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="CM Foodco" className="h-16 w-auto" />
           <h1 className="text-2xl font-semibold text-slate-900">Recuperar contraseña</h1>
         </div>
 
