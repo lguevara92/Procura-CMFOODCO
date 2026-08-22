@@ -57,51 +57,65 @@ export async function extraerFactura(ordenId: string) {
 
   const supabase = await createClient();
 
-  const { data: documento } = await supabase
+  const { data: documentos } = await supabase
     .from("documentos")
     .select("url_archivo")
     .eq("orden_id", ordenId)
     .eq("tipo", "factura_comercial")
-    .order("fecha_carga", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("fecha_carga", { ascending: false });
 
-  if (!documento) return { error: "Esta orden no tiene una factura comercial cargada todavía.", data: null };
-
-  const { data: archivo, error: downloadError } = await supabase.storage
-    .from("documentos")
-    .download(documento.url_archivo);
-
-  if (downloadError || !archivo) return { error: "No se pudo descargar la factura.", data: null };
-
-  const extension = documento.url_archivo.split(".").pop()?.toLowerCase() ?? "";
-  const esPdf = extension === "pdf";
-  const imageMediaType = IMAGE_MEDIA_TYPES[extension];
-
-  if (!esPdf && !imageMediaType) {
-    return { error: "La factura debe ser un PDF o una imagen (jpg, png, webp) para poder leerla con IA.", data: null };
+  if (!documentos || documentos.length === 0) {
+    return { error: "Esta orden no tiene ninguna factura comercial cargada todavía.", data: null };
   }
 
-  const arrayBuffer = await archivo.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  const bloques: Array<
+    | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } }
+    | { type: "image"; source: { type: "base64"; media_type: ImageMediaType; data: string } }
+  > = [];
+
+  for (const documento of documentos) {
+    const extension = documento.url_archivo.split(".").pop()?.toLowerCase() ?? "";
+    const esPdf = extension === "pdf";
+    const imageMediaType = IMAGE_MEDIA_TYPES[extension];
+    if (!esPdf && !imageMediaType) continue; // se ignoran formatos que la IA no puede leer (p. ej. .docx)
+
+    const { data: archivo, error: downloadError } = await supabase.storage
+      .from("documentos")
+      .download(documento.url_archivo);
+    if (downloadError || !archivo) continue;
+
+    const arrayBuffer = await archivo.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+    bloques.push(
+      esPdf
+        ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
+        : { type: "image", source: { type: "base64", media_type: imageMediaType!, data: base64 } },
+    );
+  }
+
+  if (bloques.length === 0) {
+    return { error: "Las facturas cargadas deben ser PDF o imagen (jpg, png, webp) para poder leerlas con IA.", data: null };
+  }
 
   try {
     const anthropic = createAnthropicClient();
     const message = await anthropic.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 2048,
+      max_tokens: 4096,
       tools: [EXTRAER_TOOL],
       tool_choice: { type: "tool", name: "reportar_articulos_factura" },
       messages: [
         {
           role: "user",
           content: [
-            esPdf
-              ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
-              : { type: "image", source: { type: "base64", media_type: imageMediaType!, data: base64 } },
+            ...bloques,
             {
               type: "text",
-              text: "Extrae todos los artículos (nombre, cantidad, precio unitario) y el total FOB de esta factura comercial.",
+              text:
+                bloques.length > 1
+                  ? "Estas son varias facturas comerciales de la misma orden de compra (pueden ser de distintos proveedores). Extrae todos los artículos (nombre, cantidad, precio unitario) de TODAS las facturas juntas, y suma el total FOB de todas."
+                  : "Extrae todos los artículos (nombre, cantidad, precio unitario) y el total FOB de esta factura comercial.",
             },
           ],
         },

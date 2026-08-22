@@ -23,7 +23,9 @@ export function LandedCostSection({ ordenId, hayFactura }: { ordenId: string; ha
       {hayFactura && (
         <div className="rounded-lg border border-dashed border-slate-300 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-slate-600">Extrae los artículos y costos de la factura comercial con IA.</p>
+            <p className="text-sm text-slate-600">
+              Extrae los artículos y costos de las facturas comerciales con IA (si hay más de una, las combina).
+            </p>
             <button
               type="button"
               disabled={pending}
