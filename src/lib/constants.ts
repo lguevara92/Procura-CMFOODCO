@@ -48,3 +48,4 @@ export const DOCUMENTOS_REQUERIDOS: DocumentoTipo[] = [
 export const ROLES_QUE_CREAN_ORDENES: UserRole[] = ["compras", "admin_sistema"];
 export const ROLES_QUE_SUBEN_DOCUMENTOS: UserRole[] = ["compras", "logistica", "admin_sistema"];
 export const ROLES_STAFF: UserRole[] = ["compras", "logistica", "administracion", "admin_sistema"];
+export const ROLES_LANDED_COST: UserRole[] = ["logistica", "admin_sistema"];

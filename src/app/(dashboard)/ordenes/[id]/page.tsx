@@ -9,7 +9,9 @@ import { EstatusSelect } from "./EstatusSelect";
 import { DocumentoUploadForm } from "./DocumentoUploadForm";
 import { CotizacionForm } from "./CotizacionForm";
 import { CotizacionRow } from "./CotizacionRow";
-import type { CotizacionFlete, Documento, OrdenEstatus, OrdenEvento, Proveedor } from "@/types/database";
+import { LandedCostForm } from "./LandedCostForm";
+import { ROLES_LANDED_COST } from "@/lib/constants";
+import type { CotizacionFlete, Documento, LandedCost, OrdenEstatus, OrdenEvento, Proveedor } from "@/types/database";
 
 const ROLES_COTIZACIONES = ["logistica", "admin_sistema"];
 
@@ -28,7 +30,9 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
 
   const puedeGestionarCotizaciones = ROLES_COTIZACIONES.includes(profile.rol);
 
-  const [{ data: documentos }, { data: eventos }, { data: cotizaciones }, { data: proveedoresLogisticos }] =
+  const puedeCalcularLandedCost = ROLES_LANDED_COST.includes(profile.rol);
+
+  const [{ data: documentos }, { data: eventos }, { data: cotizaciones }, { data: proveedoresLogisticos }, { data: landedCosts }] =
     await Promise.all([
       supabase.from("documentos").select("*").eq("orden_id", id).order("fecha_carga", { ascending: false }),
       supabase.from("orden_eventos").select("*").eq("orden_id", id).order("fecha", { ascending: true }),
@@ -40,6 +44,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
       puedeGestionarCotizaciones
         ? supabase.from("proveedores").select("*").eq("tipo", "logistica").order("nombre")
         : Promise.resolve({ data: [] as Proveedor[] }),
+      supabase.from("landed_costs").select("*").eq("orden_id", id).order("fecha_calculo", { ascending: false }),
     ]);
 
   const docs = (documentos ?? []) as Documento[];
@@ -49,6 +54,8 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
   const cotizacionesConProveedor = (cotizaciones ?? []) as unknown as (CotizacionFlete & {
     proveedor: { nombre: string } | null;
   })[];
+  const historialLandedCost = (landedCosts ?? []) as LandedCost[];
+  const ultimoLandedCost = historialLandedCost[0] ?? null;
 
   const docsConUrl = esStaff
     ? await Promise.all(
@@ -152,6 +159,97 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
               <CotizacionForm ordenId={orden.id} proveedores={(proveedoresLogisticos ?? []) as Proveedor[]} />
             </div>
           )}
+        </section>
+      )}
+
+      {(esStaff || ultimoLandedCost) && (
+        <section className="rounded-xl border border-slate-200 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Landed cost</h2>
+
+          {ultimoLandedCost ? (
+            <div className="mb-4 overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">FOB / Factura</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.fob.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">Flete internacional</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.flete.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">Seguro</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.seguro.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">Aranceles</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.aranceles.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">Honorarios agente aduanal</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.honorarios.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">Gastos locales</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.gastos_locales.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr className="bg-slate-50 font-semibold">
+                    <td className="px-3 py-2 text-slate-900">Total</td>
+                    <td className="px-3 py-2 text-slate-900">
+                      {ultimoLandedCost.total.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-slate-500">Unidades recibidas</td>
+                    <td className="px-3 py-2 text-slate-900">{ultimoLandedCost.unidades_recibidas}</td>
+                  </tr>
+                  <tr className="bg-emerald-50 font-semibold">
+                    <td className="px-3 py-2 text-emerald-800">Costo unitario</td>
+                    <td className="px-3 py-2 text-emerald-800">
+                      {ultimoLandedCost.costo_unitario.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="px-3 py-2 text-xs text-slate-400">
+                Calculado el {new Date(ultimoLandedCost.fecha_calculo).toLocaleString("es-MX")}
+              </p>
+            </div>
+          ) : (
+            esStaff && <p className="mb-4 text-sm text-slate-400">Aún no se ha calculado el landed cost de esta orden.</p>
+          )}
+
+          {historialLandedCost.length > 1 && (
+            <details className="mb-4">
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Histórico ({historialLandedCost.length})
+              </summary>
+              <ul className="mt-2 flex flex-col gap-1">
+                {historialLandedCost.map((lc) => (
+                  <li key={lc.id} className="text-xs text-slate-500">
+                    {new Date(lc.fecha_calculo).toLocaleString("es-MX")} — total{" "}
+                    {lc.total.toLocaleString("es-MX", { style: "currency", currency: "USD" })}, costo unitario{" "}
+                    {lc.costo_unitario.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {puedeCalcularLandedCost && <LandedCostForm ordenId={orden.id} />}
         </section>
       )}
 
