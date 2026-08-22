@@ -9,7 +9,7 @@ import { EstatusSelect } from "./EstatusSelect";
 import { DocumentoUploadForm } from "./DocumentoUploadForm";
 import { CotizacionForm } from "./CotizacionForm";
 import { CotizacionRow } from "./CotizacionRow";
-import { LandedCostForm } from "./LandedCostForm";
+import { LandedCostSection } from "./LandedCostSection";
 import { ROLES_LANDED_COST } from "@/lib/constants";
 import type { CotizacionFlete, Documento, LandedCost, OrdenEstatus, OrdenEvento, Proveedor } from "@/types/database";
 
@@ -56,6 +56,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
   })[];
   const historialLandedCost = (landedCosts ?? []) as LandedCost[];
   const ultimoLandedCost = historialLandedCost[0] ?? null;
+  const hayFacturaComercial = docs.some((doc) => doc.tipo === "factura_comercial");
 
   const docsConUrl = esStaff
     ? await Promise.all(
@@ -249,7 +250,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
             </details>
           )}
 
-          {puedeCalcularLandedCost && <LandedCostForm ordenId={orden.id} />}
+          {puedeCalcularLandedCost && <LandedCostSection ordenId={orden.id} hayFactura={hayFacturaComercial} />}
         </section>
       )}
 
