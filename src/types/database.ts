@@ -97,6 +97,9 @@ export interface LandedCost {
   total: number;
   unidades_recibidas: number;
   costo_unitario: number;
+  cajas: number | null;
+  cbm: number | null;
+  costo_por_caja: number | null;
   fecha_calculo: string;
 }
 

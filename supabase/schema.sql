@@ -107,6 +107,14 @@ create table public.landed_costs (
       else 0
     end
   ) stored,
+  cajas integer,
+  cbm numeric(12, 4),
+  costo_por_caja numeric(14, 4) generated always as (
+    case when cajas > 0
+      then (fob + flete + seguro + aranceles + honorarios + gastos_locales) / cajas
+      else 0
+    end
+  ) stored,
   fecha_calculo timestamptz not null default now()
 );
 

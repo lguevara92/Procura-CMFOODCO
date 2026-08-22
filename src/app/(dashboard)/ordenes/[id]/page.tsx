@@ -57,6 +57,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
   const historialLandedCost = (landedCosts ?? []) as LandedCost[];
   const ultimoLandedCost = historialLandedCost[0] ?? null;
   const hayFacturaComercial = docs.some((doc) => doc.tipo === "factura_comercial");
+  const hayPackingList = docs.some((doc) => doc.tipo === "packing_list");
 
   const docsConUrl = esStaff
     ? await Promise.all(
@@ -223,6 +224,29 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
                       {ultimoLandedCost.costo_unitario.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
                     </td>
                   </tr>
+                  {ultimoLandedCost.cajas && (
+                    <>
+                      <tr>
+                        <td className="px-3 py-2 text-slate-500">Cajas recibidas</td>
+                        <td className="px-3 py-2 text-slate-900">{ultimoLandedCost.cajas}</td>
+                      </tr>
+                      <tr className="bg-emerald-50 font-semibold">
+                        <td className="px-3 py-2 text-emerald-800">Costo por caja</td>
+                        <td className="px-3 py-2 text-emerald-800">
+                          {(ultimoLandedCost.costo_por_caja ?? 0).toLocaleString("es-MX", {
+                            style: "currency",
+                            currency: "USD",
+                          })}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                  {ultimoLandedCost.cbm && (
+                    <tr>
+                      <td className="px-3 py-2 text-slate-500">CBM total</td>
+                      <td className="px-3 py-2 text-slate-900">{ultimoLandedCost.cbm} m³</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               <p className="px-3 py-2 text-xs text-slate-400">
@@ -244,13 +268,18 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
                     {new Date(lc.fecha_calculo).toLocaleString("es-MX")} — total{" "}
                     {lc.total.toLocaleString("es-MX", { style: "currency", currency: "USD" })}, costo unitario{" "}
                     {lc.costo_unitario.toLocaleString("es-MX", { style: "currency", currency: "USD" })}
+                    {lc.cajas
+                      ? `, costo por caja ${(lc.costo_por_caja ?? 0).toLocaleString("es-MX", { style: "currency", currency: "USD" })}`
+                      : ""}
                   </li>
                 ))}
               </ul>
             </details>
           )}
 
-          {puedeCalcularLandedCost && <LandedCostSection ordenId={orden.id} hayFactura={hayFacturaComercial} />}
+          {puedeCalcularLandedCost && (
+            <LandedCostSection ordenId={orden.id} hayFactura={hayFacturaComercial} hayPackingList={hayPackingList} />
+          )}
         </section>
       )}
 

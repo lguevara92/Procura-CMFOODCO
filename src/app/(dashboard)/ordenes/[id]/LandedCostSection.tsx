@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { extraerFactura } from "./factura-actions";
+import { extraerPackingList } from "./packing-list-actions";
 import { LandedCostForm } from "./LandedCostForm";
 
 interface ArticuloExtraido {
@@ -10,11 +11,24 @@ interface ArticuloExtraido {
   precio_unitario: number;
 }
 
-export function LandedCostSection({ ordenId, hayFactura }: { ordenId: string; hayFactura: boolean }) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+export function LandedCostSection({
+  ordenId,
+  hayFactura,
+  hayPackingList,
+}: {
+  ordenId: string;
+  hayFactura: boolean;
+  hayPackingList: boolean;
+}) {
+  const [facturaPending, startFacturaTransition] = useTransition();
+  const [facturaError, setFacturaError] = useState<string | null>(null);
   const [articulos, setArticulos] = useState<ArticuloExtraido[] | null>(null);
   const [fobSugerido, setFobSugerido] = useState<number | undefined>(undefined);
+
+  const [packingPending, startPackingTransition] = useTransition();
+  const [packingError, setPackingError] = useState<string | null>(null);
+  const [cajasSugeridas, setCajasSugeridas] = useState<number | undefined>(undefined);
+  const [cbmSugerido, setCbmSugerido] = useState<number | undefined>(undefined);
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "USD" });
 
@@ -28,13 +42,13 @@ export function LandedCostSection({ ordenId, hayFactura }: { ordenId: string; ha
             </p>
             <button
               type="button"
-              disabled={pending}
+              disabled={facturaPending}
               onClick={() =>
-                startTransition(async () => {
-                  setError(null);
+                startFacturaTransition(async () => {
+                  setFacturaError(null);
                   const res = await extraerFactura(ordenId);
                   if (res.error || !res.data) {
-                    setError(res.error ?? "No se pudo leer la factura.");
+                    setFacturaError(res.error ?? "No se pudo leer la factura.");
                     return;
                   }
                   setArticulos(res.data.articulos);
@@ -43,11 +57,11 @@ export function LandedCostSection({ ordenId, hayFactura }: { ordenId: string; ha
               }
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
             >
-              {pending ? "Leyendo factura..." : "Extraer artículos con IA"}
+              {facturaPending ? "Leyendo factura..." : "Extraer artículos con IA"}
             </button>
           </div>
 
-          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+          {facturaError && <p className="mt-2 text-xs text-red-600">{facturaError}</p>}
 
           {articulos && (
             <div className="mt-3 overflow-x-auto">
@@ -79,7 +93,45 @@ export function LandedCostSection({ ordenId, hayFactura }: { ordenId: string; ha
         </div>
       )}
 
-      <LandedCostForm ordenId={ordenId} fobInicial={fobSugerido} />
+      {hayPackingList && (
+        <div className="rounded-lg border border-dashed border-slate-300 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-600">
+              Extrae el total de cajas y el CBM del packing list con IA (si hay más de uno, los suma).
+            </p>
+            <button
+              type="button"
+              disabled={packingPending}
+              onClick={() =>
+                startPackingTransition(async () => {
+                  setPackingError(null);
+                  const res = await extraerPackingList(ordenId);
+                  if (res.error || !res.data) {
+                    setPackingError(res.error ?? "No se pudo leer el packing list.");
+                    return;
+                  }
+                  setCajasSugeridas(res.data.total_cajas);
+                  setCbmSugerido(res.data.cbm_total);
+                })
+              }
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            >
+              {packingPending ? "Leyendo packing list..." : "Extraer cajas y CBM con IA"}
+            </button>
+          </div>
+
+          {packingError && <p className="mt-2 text-xs text-red-600">{packingError}</p>}
+
+          {cajasSugeridas !== undefined && (
+            <p className="mt-2 text-xs text-slate-500">
+              Se encontraron <strong>{cajasSugeridas}</strong> cajas y <strong>{cbmSugerido} m³</strong> de CBM total —
+              ya se cargaron abajo, puedes ajustarlos si hace falta.
+            </p>
+          )}
+        </div>
+      )}
+
+      <LandedCostForm ordenId={ordenId} fobInicial={fobSugerido} cajasInicial={cajasSugeridas} cbmInicial={cbmSugerido} />
     </div>
   );
 }

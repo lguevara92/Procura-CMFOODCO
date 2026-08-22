@@ -11,12 +11,22 @@ const CAMPOS = [
   { name: "gastos_locales", label: "Gastos locales (maniobras, almacenaje)" },
 ];
 
-export function LandedCostForm({ ordenId, fobInicial }: { ordenId: string; fobInicial?: number }) {
+export function LandedCostForm({
+  ordenId,
+  fobInicial,
+  cajasInicial,
+  cbmInicial,
+}: {
+  ordenId: string;
+  fobInicial?: number;
+  cajasInicial?: number;
+  cbmInicial?: number;
+}) {
   const [state, formAction, pending] = useActionState(calcularLandedCost, null);
 
   return (
     <form
-      key={fobInicial ?? "sin-fob-sugerido"}
+      key={`${fobInicial ?? "sin-fob"}-${cajasInicial ?? "sin-cajas"}-${cbmInicial ?? "sin-cbm"}`}
       action={formAction}
       className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4"
     >
@@ -55,6 +65,28 @@ export function LandedCostForm({ ordenId, fobInicial }: { ordenId: string; fobIn
             step="0.01"
             min="0"
             required
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-600">Cajas recibidas (opcional)</label>
+          <input
+            name="cajas"
+            type="number"
+            step="1"
+            min="0"
+            defaultValue={cajasInicial ?? ""}
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-600">CBM total (opcional)</label>
+          <input
+            name="cbm"
+            type="number"
+            step="0.0001"
+            min="0"
+            defaultValue={cbmInicial ?? ""}
             className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
           />
         </div>

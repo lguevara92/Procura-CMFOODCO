@@ -15,6 +15,10 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
   const ordenId = String(formData.get("orden_id") ?? "");
   const num = (name: string) => Number(formData.get(name) ?? 0) || 0;
   const unidadesRecibidas = num("unidades_recibidas");
+  const cajasStr = String(formData.get("cajas") ?? "").trim();
+  const cbmStr = String(formData.get("cbm") ?? "").trim();
+  const cajas = cajasStr ? Number(cajasStr) : null;
+  const cbm = cbmStr ? Number(cbmStr) : null;
 
   if (!ordenId || unidadesRecibidas <= 0) {
     return { error: "Indica las unidades recibidas (debe ser mayor a 0)." };
@@ -32,6 +36,8 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
       honorarios: num("honorarios"),
       gastos_locales: num("gastos_locales"),
       unidades_recibidas: unidadesRecibidas,
+      cajas: cajas && cajas > 0 ? cajas : null,
+      cbm: cbm && cbm > 0 ? cbm : null,
     })
     .select("*")
     .single();
@@ -72,6 +78,13 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
             <tr><td><strong>Total</strong></td><td><strong>${fmt(landed.total)}</strong></td></tr>
             <tr><td>Unidades recibidas</td><td>${landed.unidades_recibidas}</td></tr>
             <tr><td><strong>Costo unitario</strong></td><td><strong>${fmt(landed.costo_unitario)}</strong></td></tr>
+            ${
+              landed.cajas
+                ? `<tr><td>Cajas recibidas</td><td>${landed.cajas}</td></tr>
+                   <tr><td><strong>Costo por caja</strong></td><td><strong>${fmt(landed.costo_por_caja)}</strong></td></tr>`
+                : ""
+            }
+            ${landed.cbm ? `<tr><td>CBM total</td><td>${landed.cbm} m³</td></tr>` : ""}
           </table>
         `,
       });
