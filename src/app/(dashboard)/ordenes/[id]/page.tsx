@@ -68,6 +68,16 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
       )
     : [];
 
+  const landedCostPdfUrls = new Map<string, string>();
+  await Promise.all(
+    historialLandedCost
+      .filter((lc) => lc.pdf_path)
+      .map(async (lc) => {
+        const { data } = await supabase.storage.from("documentos").createSignedUrl(lc.pdf_path!, 60 * 10);
+        if (data?.signedUrl) landedCostPdfUrls.set(lc.id, data.signedUrl);
+      }),
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
@@ -249,8 +259,18 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
                   )}
                 </tbody>
               </table>
-              <p className="px-3 py-2 text-xs text-slate-400">
-                Calculado el {new Date(ultimoLandedCost.fecha_calculo).toLocaleString("es-MX")}
+              <p className="flex items-center justify-between px-3 py-2 text-xs text-slate-400">
+                <span>Calculado el {new Date(ultimoLandedCost.fecha_calculo).toLocaleString("es-MX")}</span>
+                {landedCostPdfUrls.get(ultimoLandedCost.id) && (
+                  <a
+                    href={landedCostPdfUrls.get(ultimoLandedCost.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-slate-900 underline"
+                  >
+                    Ver PDF
+                  </a>
+                )}
               </p>
             </div>
           ) : (
@@ -271,6 +291,14 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
                     {lc.cajas
                       ? `, costo por caja ${(lc.costo_por_caja ?? 0).toLocaleString("es-MX", { style: "currency", currency: "USD" })}`
                       : ""}
+                    {landedCostPdfUrls.get(lc.id) && (
+                      <>
+                        {" — "}
+                        <a href={landedCostPdfUrls.get(lc.id)} target="_blank" rel="noreferrer" className="underline">
+                          Ver PDF
+                        </a>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -3,7 +3,17 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "Procura <onboarding@resend.
 
 // Notificación best-effort: si falla o no hay API key configurada, se registra
 // en consola pero no debe tumbar la acción principal (p. ej. elegir una cotización).
-export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  attachments,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: { filename: string; content: string }[];
+}) {
   if (!RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY no configurada — se omite envío a ${to}: "${subject}"`);
     return;
@@ -16,7 +26,7 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
         Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html, attachments }),
     });
 
     if (!res.ok) {

@@ -115,6 +115,7 @@ create table public.landed_costs (
       else 0
     end
   ) stored,
+  pdf_path text,
   fecha_calculo timestamptz not null default now()
 );
 

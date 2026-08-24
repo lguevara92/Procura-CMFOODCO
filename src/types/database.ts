@@ -100,6 +100,7 @@ export interface LandedCost {
   cajas: number | null;
   cbm: number | null;
   costo_por_caja: number | null;
+  pdf_path: string | null;
   fecha_calculo: string;
 }
 

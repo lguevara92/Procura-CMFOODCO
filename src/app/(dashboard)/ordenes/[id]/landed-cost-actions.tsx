@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { ROLES_LANDED_COST } from "@/lib/constants";
 import { sendEmail } from "@/lib/email";
+import { LandedCostDocument } from "@/lib/pdf/LandedCostDocument";
 
 export async function calcularLandedCost(_prevState: { error: string | null } | null, formData: FormData) {
   const profile = await requireProfile();
@@ -46,10 +48,44 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
 
   const { data: ordenData } = await supabase
     .from("ordenes_compra")
-    .select("operacion_id, proveedor:proveedores(nombre)")
+    .select("operacion_id, incoterm, proveedor:proveedores(nombre), operacion:operaciones(nombre)")
     .eq("id", ordenId)
     .single();
-  const orden = ordenData as unknown as { operacion_id: string; proveedor: { nombre: string } | null } | null;
+  const orden = ordenData as unknown as {
+    operacion_id: string;
+    incoterm: string;
+    proveedor: { nombre: string } | null;
+    operacion: { nombre: string } | null;
+  } | null;
+
+  const proveedorNombre = orden?.proveedor?.nombre ?? "—";
+  const operacionNombre = orden?.operacion?.nombre ?? "—";
+
+  // Genera el PDF del landed cost y lo guarda junto al resto de documentos de la orden.
+  let pdfBase64: string | null = null;
+  try {
+    const pdfBuffer = await renderToBuffer(
+      <LandedCostDocument
+        landedCost={landed}
+        proveedorNombre={proveedorNombre}
+        operacionNombre={operacionNombre}
+        incoterm={orden?.incoterm ?? "—"}
+      />,
+    );
+    const pdfPath = `${ordenId}/landed-cost-${landed.id}.pdf`;
+    const { error: pdfUploadError } = await supabase.storage
+      .from("documentos")
+      .upload(pdfPath, pdfBuffer, { contentType: "application/pdf" });
+
+    if (!pdfUploadError) {
+      await supabase.from("landed_costs").update({ pdf_path: pdfPath }).eq("id", landed.id);
+      pdfBase64 = pdfBuffer.toString("base64");
+    } else {
+      console.error("[landed-cost-pdf] No se pudo subir el PDF:", pdfUploadError.message);
+    }
+  } catch (err) {
+    console.error("[landed-cost-pdf] No se pudo generar el PDF:", err);
+  }
 
   if (orden) {
     const { data: destinatarios } = await supabase
@@ -58,7 +94,6 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
       .eq("operacion_id", orden.operacion_id)
       .eq("rol", "operacion");
 
-    const proveedorNombre = orden.proveedor?.nombre ?? "tu orden";
     const moneda = "USD";
     const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: moneda });
 
@@ -67,7 +102,7 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
         to: destinatario.email,
         subject: `Landed cost listo — ${proveedorNombre}`,
         html: `
-          <p>El landed cost de tu orden con <strong>${proveedorNombre}</strong> ya está calculado.</p>
+          <p>El landed cost de tu orden con <strong>${proveedorNombre}</strong> ya está calculado. Adjuntamos el reporte en PDF.</p>
           <table cellpadding="4">
             <tr><td>FOB / Factura</td><td>${fmt(landed.fob)}</td></tr>
             <tr><td>Flete internacional</td><td>${fmt(landed.flete)}</td></tr>
@@ -87,6 +122,7 @@ export async function calcularLandedCost(_prevState: { error: string | null } | 
             ${landed.cbm ? `<tr><td>CBM total</td><td>${landed.cbm} m³</td></tr>` : ""}
           </table>
         `,
+        attachments: pdfBase64 ? [{ filename: `landed-cost-${proveedorNombre}.pdf`, content: pdfBase64 }] : undefined,
       });
     }
   }
