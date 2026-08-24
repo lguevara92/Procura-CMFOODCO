@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { CrearUsuarioForm } from "./CrearUsuarioForm";
+import { CrearOperacionForm } from "./CrearOperacionForm";
 import { UsuarioRow } from "./UsuarioRow";
 import type { Operacion, UserProfile } from "@/types/database";
 
@@ -46,6 +47,20 @@ export default async function UsuariosPage() {
       <div>
         <h2 className="mb-2 text-sm font-semibold text-slate-900">Crear usuario</h2>
         <CrearUsuarioForm operaciones={(operaciones ?? []) as Operacion[]} />
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-semibold text-slate-900">Operaciones</h2>
+        {(operaciones ?? []).length > 0 && (
+          <ul className="mb-2 flex flex-wrap gap-2">
+            {(operaciones as Operacion[]).map((op) => (
+              <li key={op.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                {op.nombre}
+              </li>
+            ))}
+          </ul>
+        )}
+        <CrearOperacionForm />
       </div>
     </div>
   );

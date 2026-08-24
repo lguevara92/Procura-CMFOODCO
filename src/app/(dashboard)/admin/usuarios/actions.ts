@@ -64,6 +64,27 @@ export async function crearUsuario(_prevState: { error: string | null; ok?: bool
   return { error: null, ok: true };
 }
 
+export async function crearOperacion(_prevState: { error: string | null; ok?: boolean } | null, formData: FormData) {
+  try {
+    await requireAdminSistema();
+  } catch {
+    return { error: "No tienes permiso para crear operaciones." };
+  }
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!nombre) return { error: "Escribe un nombre para la operación." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("operaciones").insert({ nombre });
+  if (error) {
+    const mensaje = error.code === "23505" ? "Ya existe una operación con ese nombre." : error.message;
+    return { error: mensaje };
+  }
+
+  revalidatePath("/admin/usuarios");
+  return { error: null, ok: true };
+}
+
 export async function actualizarUsuario(userId: string, rol: UserRole, operacionId: string | null) {
   try {
     await requireAdminSistema();
