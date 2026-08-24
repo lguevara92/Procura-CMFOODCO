@@ -6,7 +6,7 @@ import { DOCUMENTO_LABELS, DOCUMENTOS_REQUERIDOS } from "@/lib/constants";
 import { evaluarChecklist } from "@/lib/checklist";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
 import { StatusBadge } from "@/components/StatusBadge";
-import type { Documento, OrdenCompra, OrdenEstatus, Operacion, Proveedor } from "@/types/database";
+import type { Documento, OrdenCompra, OrdenEstatus, OrdenEvento, Operacion, Proveedor } from "@/types/database";
 
 type OrdenConRelaciones = OrdenCompra & {
   proveedor: { nombre: string } | null;
@@ -50,9 +50,24 @@ export default async function AdminDocumentosPage({
     ordenes = ordenes.filter((o) => new Date(o.fecha_creacion).getTime() <= limite);
   }
 
+  const ordenIdsCerradas = ordenes.filter((o) => o.estatus === "cerrado").map((o) => o.id);
+  const { data: eventosCierre } = ordenIdsCerradas.length
+    ? await supabase
+        .from("orden_eventos")
+        .select("orden_id, fecha")
+        .eq("estatus_nuevo", "cerrado")
+        .in("orden_id", ordenIdsCerradas)
+        .order("fecha", { ascending: false })
+    : { data: [] as Pick<OrdenEvento, "orden_id" | "fecha">[] };
+
+  const fechaCierrePorOrden = new Map<string, string>();
+  for (const evento of eventosCierre ?? []) {
+    if (!fechaCierrePorOrden.has(evento.orden_id)) fechaCierrePorOrden.set(evento.orden_id, evento.fecha);
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold text-slate-900">Checklist de documentos — todas las órdenes</h1>
+      <h1 className="text-xl font-semibold text-slate-900">Admin Órdenes — checklist de todas las órdenes</h1>
 
       <form className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-4">
         <div className="flex flex-col gap-1">
@@ -105,6 +120,7 @@ export default async function AdminDocumentosPage({
               <th className="px-4 py-3">Checklist</th>
               <th className="px-4 py-3">Documentos faltantes</th>
               <th className="px-4 py-3">Creada</th>
+              <th className="px-4 py-3">Cerrada</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -132,13 +148,18 @@ export default async function AdminDocumentosPage({
                   <td className="px-4 py-3 text-slate-500">
                     {new Date(orden.fecha_creacion).toLocaleDateString("es-MX")}
                   </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {fechaCierrePorOrden.has(orden.id)
+                      ? new Date(fechaCierrePorOrden.get(orden.id)!).toLocaleDateString("es-MX")
+                      : "—"}
+                  </td>
                 </tr>
               );
             })}
 
             {ordenes.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                   No hay órdenes que coincidan con los filtros.
                 </td>
               </tr>
