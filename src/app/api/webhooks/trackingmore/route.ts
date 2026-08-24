@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
   let query = supabase.from("tracking").update({
-    estatus: data?.status ?? null,
+    estatus: data?.delivery_status ?? null,
     substatus: data?.substatus ?? null,
     ubicacion_actual: extraerUbicacionActual(data),
     fecha_estimada_entrega: data?.scheduled_delivery_date || null,

@@ -82,12 +82,27 @@ export function normalizarEtapa(status: string | null, substatus: string | null)
   return "recolectado";
 }
 
+interface Checkpoint {
+  location?: string | null;
+  city?: string | null;
+  state?: string | null;
+}
+
 // Extrae, de forma defensiva, la ubicación más reciente del payload de TrackingMore.
+// Preferimos ciudad/estado del último checkpoint; si no vienen, caemos a
+// origin_city/origin_state, y como último recurso al texto crudo de "location".
 export function extraerUbicacionActual(data: Record<string, unknown> | null | undefined): string | null {
   if (!data) return null;
-  const destino = data.destination_info as { trackinfo?: { location?: string }[] } | undefined;
-  const origen = data.origin_info as { trackinfo?: { location?: string }[] } | undefined;
-  const ultimoDestino = destino?.trackinfo?.[0]?.location;
-  const ultimoOrigen = origen?.trackinfo?.[0]?.location;
-  return ultimoDestino || ultimoOrigen || null;
+
+  const destino = data.destination_info as { trackinfo?: Checkpoint[] } | undefined;
+  const origen = data.origin_info as { trackinfo?: Checkpoint[] } | undefined;
+  const checkpoint = destino?.trackinfo?.[0] || origen?.trackinfo?.[0];
+
+  const ciudadEstado = [checkpoint?.city, checkpoint?.state].filter(Boolean).join(", ");
+  if (ciudadEstado) return ciudadEstado;
+
+  const origenGeneral = [data.origin_city, data.origin_state].filter(Boolean).join(", ");
+  if (origenGeneral) return origenGeneral;
+
+  return checkpoint?.location || null;
 }

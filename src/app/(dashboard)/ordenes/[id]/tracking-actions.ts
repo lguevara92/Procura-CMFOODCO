@@ -46,7 +46,7 @@ export async function registrarTracking(_prevState: { error: string | null } | n
     numero_guia: numeroGuia,
     courier_code: courier.courier_code,
     transportista: courier.courier_name,
-    estatus: creado?.status ?? "pending",
+    estatus: creado?.delivery_status ?? "pending",
     substatus: creado?.substatus ?? null,
     ubicacion_actual: extraerUbicacionActual(creado),
     fecha_estimada_entrega: creado?.scheduled_delivery_date || null,
@@ -75,7 +75,7 @@ export async function actualizarTracking(trackingId: string, ordenId: string) {
     const { error } = await supabase
       .from("tracking")
       .update({
-        estatus: actualizado?.status ?? tracking.estatus,
+        estatus: actualizado?.delivery_status ?? tracking.estatus,
         substatus: actualizado?.substatus ?? tracking.substatus,
         ubicacion_actual: extraerUbicacionActual(actualizado) ?? tracking.ubicacion_actual,
         fecha_estimada_entrega: actualizado?.scheduled_delivery_date || tracking.fecha_estimada_entrega,
