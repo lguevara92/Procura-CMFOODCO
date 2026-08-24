@@ -107,6 +107,7 @@ export interface LandedCost {
 export interface HistorialPrecio {
   id: string;
   proveedor_id: string;
+  documento_id: string | null;
   articulo: string;
   precio: number;
   fecha: string;

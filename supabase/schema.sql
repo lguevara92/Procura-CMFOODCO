@@ -122,6 +122,7 @@ create table public.landed_costs (
 create table public.historial_precios (
   id uuid primary key default gen_random_uuid(),
   proveedor_id uuid not null references public.proveedores (id) on delete cascade,
+  documento_id uuid references public.documentos (id) on delete set null,
   articulo text not null,
   precio numeric(14, 4) not null,
   fecha date not null default current_date

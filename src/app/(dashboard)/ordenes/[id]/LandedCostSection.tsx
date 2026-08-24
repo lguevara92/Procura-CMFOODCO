@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { extraerFactura, type ArticuloExtraido } from "./factura-actions";
+import { extraerFactura, type FacturaExtraida } from "./factura-actions";
 import { extraerPackingList, type ArticuloPacking } from "./packing-list-actions";
 import { LandedCostForm } from "./LandedCostForm";
 import { DesgloseArticulos } from "./DesgloseArticulos";
@@ -21,7 +21,7 @@ export function LandedCostSection({
 }) {
   const [facturaPending, startFacturaTransition] = useTransition();
   const [facturaError, setFacturaError] = useState<string | null>(null);
-  const [articulosFactura, setArticulosFactura] = useState<ArticuloExtraido[] | null>(null);
+  const [facturas, setFacturas] = useState<FacturaExtraida[] | null>(null);
   const [fobSugerido, setFobSugerido] = useState<number | undefined>(undefined);
 
   const [packingPending, startPackingTransition] = useTransition();
@@ -33,8 +33,8 @@ export function LandedCostSection({
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "USD" });
 
   const articulosCombinados = useMemo(
-    () => (articulosFactura ? combinarArticulos(articulosFactura, articulosPacking ?? []) : null),
-    [articulosFactura, articulosPacking],
+    () => (facturas ? combinarArticulos(facturas.flatMap((f) => f.articulos), articulosPacking ?? []) : null),
+    [facturas, articulosPacking],
   );
 
   const gastosCompartidos = ultimoLandedCost
@@ -64,7 +64,7 @@ export function LandedCostSection({
                     setFacturaError(res.error ?? "No se pudo leer la factura.");
                     return;
                   }
-                  setArticulosFactura(res.data.articulos);
+                  setFacturas(res.data.facturas);
                   setFobSugerido(res.data.totalFob);
                 })
               }
@@ -76,30 +76,37 @@ export function LandedCostSection({
 
           {facturaError && <p className="mt-2 text-xs text-red-600">{facturaError}</p>}
 
-          {articulosFactura && (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="text-slate-500">
-                  <tr>
-                    <th className="py-1 pr-3">Artículo</th>
-                    <th className="py-1 pr-3">Cantidad</th>
-                    <th className="py-1">Precio unitario</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {articulosFactura.map((articulo, i) => (
-                    <tr key={i}>
-                      <td className="py-1 pr-3">{articulo.nombre}</td>
-                      <td className="py-1 pr-3">{articulo.cantidad}</td>
-                      <td className="py-1">{fmt(articulo.precio_unitario)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="mt-2 text-xs text-slate-500">
-                Se guardó cada artículo en el histórico de precios del proveedor. El total sugerido de FOB (
-                {fobSugerido !== undefined ? fmt(fobSugerido) : "—"}) ya se cargó abajo — puedes ajustarlo si hace
-                falta.
+          {facturas && (
+            <div className="mt-3 flex flex-col gap-3">
+              {facturas.map((factura) => (
+                <div key={factura.documentoId} className="overflow-x-auto">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Factura del {new Date(factura.fechaCarga).toLocaleDateString("es-MX")} — total {fmt(factura.totalFob)}
+                  </p>
+                  <table className="w-full text-left text-xs">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="py-1 pr-3">Artículo</th>
+                        <th className="py-1 pr-3">Cantidad</th>
+                        <th className="py-1">Precio unitario</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {factura.articulos.map((articulo, i) => (
+                        <tr key={i}>
+                          <td className="py-1 pr-3">{articulo.nombre}</td>
+                          <td className="py-1 pr-3">{articulo.cantidad}</td>
+                          <td className="py-1">{fmt(articulo.precio_unitario)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+              <p className="text-xs text-slate-500">
+                Se guardó cada artículo en el histórico de precios del proveedor, agrupado por factura. El total
+                sugerido de FOB ({fobSugerido !== undefined ? fmt(fobSugerido) : "—"}) ya se cargó abajo — puedes
+                ajustarlo si hace falta.
               </p>
             </div>
           )}

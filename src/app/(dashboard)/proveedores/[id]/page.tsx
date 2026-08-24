@@ -33,8 +33,22 @@ export default async function ProveedorDetallePage({ params }: { params: Promise
     .from("historial_precios")
     .select("*")
     .eq("proveedor_id", id)
-    .order("articulo")
-    .order("fecha", { ascending: false });
+    .order("fecha", { ascending: false })
+    .order("articulo");
+
+  const historial = (historialPrecios ?? []) as HistorialPrecio[];
+  const documentoIds = Array.from(new Set(historial.map((h) => h.documento_id).filter((v): v is string => !!v)));
+  const { data: documentosHistorial } = documentoIds.length
+    ? await supabase.from("documentos").select("id, fecha_carga, url_archivo").in("id", documentoIds)
+    : { data: [] as Pick<Documento, "id" | "fecha_carga" | "url_archivo">[] };
+
+  const facturasPorId = new Map<string, { fechaCarga: string; signedUrl: string | null }>();
+  await Promise.all(
+    (documentosHistorial ?? []).map(async (doc) => {
+      const { data } = await supabase.storage.from("documentos").createSignedUrl(doc.url_archivo, 60 * 10);
+      facturasPorId.set(doc.id, { fechaCarga: doc.fecha_carga, signedUrl: data?.signedUrl ?? null });
+    }),
+  );
 
   if (proveedor.tipo === "compra") {
     const { data: ordenesData } = await supabase
@@ -160,7 +174,7 @@ export default async function ProveedorDetallePage({ params }: { params: Promise
           </ul>
         </section>
 
-        <HistorialPreciosSection historial={(historialPrecios ?? []) as HistorialPrecio[]} />
+        <HistorialPreciosSection historial={historial} facturasPorId={facturasPorId} />
       </div>
     );
   }
@@ -231,7 +245,7 @@ export default async function ProveedorDetallePage({ params }: { params: Promise
         )}
       </section>
 
-      <HistorialPreciosSection historial={(historialPrecios ?? []) as HistorialPrecio[]} />
+      <HistorialPreciosSection historial={historial} facturasPorId={facturasPorId} />
     </div>
   );
 }
@@ -257,34 +271,65 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function HistorialPreciosSection({ historial }: { historial: HistorialPrecio[] }) {
+function HistorialPreciosSection({
+  historial,
+  facturasPorId,
+}: {
+  historial: HistorialPrecio[];
+  facturasPorId: Map<string, { fechaCarga: string; signedUrl: string | null }>;
+}) {
+  const grupos = new Map<string, HistorialPrecio[]>();
+  for (const h of historial) {
+    const clave = h.documento_id ?? "sin-factura";
+    const lista = grupos.get(clave) ?? [];
+    lista.push(h);
+    grupos.set(clave, lista);
+  }
+
   return (
     <section className="rounded-xl border border-slate-200 p-4">
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Histórico de precios por artículo</h2>
+      <h2 className="mb-3 text-sm font-semibold text-slate-900">Histórico de precios por factura</h2>
       {historial.length === 0 ? (
         <p className="text-sm text-slate-400">
           Aún no hay historial — se llena automáticamente cuando se extraen facturas con IA en landed cost.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="py-2 pr-3">Artículo</th>
-                <th className="py-2 pr-3">Precio</th>
-                <th className="py-2">Fecha</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {historial.map((h) => (
-                <tr key={h.id}>
-                  <td className="py-2 pr-3 text-slate-900">{h.articulo}</td>
-                  <td className="py-2 pr-3 text-slate-600">{fmtUsd(h.precio)}</td>
-                  <td className="py-2 text-slate-500">{new Date(h.fecha).toLocaleDateString("es-MX")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-4">
+          {Array.from(grupos.entries()).map(([clave, items]) => {
+            const factura = clave !== "sin-factura" ? facturasPorId.get(clave) : undefined;
+            return (
+              <div key={clave} className="overflow-x-auto">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {factura ? `Factura del ${new Date(factura.fechaCarga).toLocaleDateString("es-MX")}` : "Sin factura asociada"}
+                  </p>
+                  {factura?.signedUrl && (
+                    <a href={factura.signedUrl} target="_blank" rel="noreferrer" className="text-xs text-slate-900 underline">
+                      Ver factura
+                    </a>
+                  )}
+                </div>
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Artículo</th>
+                      <th className="py-2 pr-3">Precio</th>
+                      <th className="py-2">Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {items.map((h) => (
+                      <tr key={h.id}>
+                        <td className="py-2 pr-3 text-slate-900">{h.articulo}</td>
+                        <td className="py-2 pr-3 text-slate-600">{fmtUsd(h.precio)}</td>
+                        <td className="py-2 text-slate-500">{new Date(h.fecha).toLocaleDateString("es-MX")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

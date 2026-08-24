@@ -13,9 +13,15 @@ type OrdenConRelaciones = OrdenCompra & {
   documentos: Pick<Documento, "tipo" | "fecha_vencimiento">[];
 };
 
-export default async function OrdenesPage() {
+export default async function OrdenesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mostrar_cerradas?: string }>;
+}) {
   const profile = await requireProfile();
   const supabase = await createClient();
+  const { mostrar_cerradas } = await searchParams;
+  const mostrarCerradas = mostrar_cerradas === "1";
 
   const { data, error } = await supabase
     .from("ordenes_compra")
@@ -24,7 +30,9 @@ export default async function OrdenesPage() {
     )
     .order("fecha_creacion", { ascending: false });
 
-  const ordenes = (data ?? []) as unknown as OrdenConRelaciones[];
+  const todasLasOrdenes = (data ?? []) as unknown as OrdenConRelaciones[];
+  const ordenesCerradas = todasLasOrdenes.filter((o) => o.estatus === "cerrado");
+  const ordenes = mostrarCerradas ? todasLasOrdenes : todasLasOrdenes.filter((o) => o.estatus !== "cerrado");
   const puedeCrear = ROLES_QUE_CREAN_ORDENES.includes(profile.rol);
 
   return (
@@ -39,6 +47,15 @@ export default async function OrdenesPage() {
             Nueva orden
           </Link>
         )}
+      </div>
+
+      <div>
+        <Link
+          href={mostrarCerradas ? "/ordenes" : "/ordenes?mostrar_cerradas=1"}
+          className="text-sm text-slate-500 hover:underline"
+        >
+          {mostrarCerradas ? "Ocultar cerradas" : `Mostrar cerradas (${ordenesCerradas.length})`}
+        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600">No se pudieron cargar las órdenes: {error.message}</p>}

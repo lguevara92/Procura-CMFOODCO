@@ -28,7 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 href="/admin/documentos"
                 className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               >
-                Checklist de documentos
+                Admin Ordenes
               </Link>
             )}
             {canSeeProveedores && (

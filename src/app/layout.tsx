@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://procura-cmfoodco.vercel.app"),
   title: "Procura — CM Foodco",
   description: "Compras, logística y landed cost — CM Foodco",
 };

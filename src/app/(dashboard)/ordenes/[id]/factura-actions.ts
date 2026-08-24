@@ -12,6 +12,13 @@ export interface ArticuloExtraido {
   precio_unitario: number;
 }
 
+export interface FacturaExtraida {
+  documentoId: string;
+  fechaCarga: string;
+  articulos: ArticuloExtraido[];
+  totalFob: number;
+}
+
 type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
 const IMAGE_MEDIA_TYPES: Record<string, ImageMediaType> = {
@@ -47,6 +54,57 @@ const EXTRAER_TOOL = {
   },
 };
 
+async function leerUnaFactura(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  documento: { id: string; url_archivo: string; fecha_carga: string },
+): Promise<FacturaExtraida | null> {
+  const extension = documento.url_archivo.split(".").pop()?.toLowerCase() ?? "";
+  const esPdf = extension === "pdf";
+  const imageMediaType = IMAGE_MEDIA_TYPES[extension];
+  if (!esPdf && !imageMediaType) return null; // formato que la IA no puede leer (p. ej. .docx)
+
+  const { data: archivo, error: downloadError } = await supabase.storage.from("documentos").download(documento.url_archivo);
+  if (downloadError || !archivo) return null;
+
+  const arrayBuffer = await archivo.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+  const bloque = esPdf
+    ? ({ type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } } as const)
+    : ({ type: "image", source: { type: "base64", media_type: imageMediaType!, data: base64 } } as const);
+
+  const anthropic = createAnthropicClient();
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 4096,
+    tools: [EXTRAER_TOOL],
+    tool_choice: { type: "tool", name: "reportar_articulos_factura" },
+    messages: [
+      {
+        role: "user",
+        content: [
+          bloque,
+          {
+            type: "text",
+            text: "Extrae todos los artículos (código si aparece, nombre, cantidad, precio unitario) y el total FOB de esta factura comercial.",
+          },
+        ],
+      },
+    ],
+  });
+
+  const toolUse = message.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") return null;
+
+  const resultado = toolUse.input as { articulos: ArticuloExtraido[]; total_fob: number };
+  return {
+    documentoId: documento.id,
+    fechaCarga: documento.fecha_carga,
+    articulos: resultado.articulos,
+    totalFob: resultado.total_fob,
+  };
+}
+
 export async function extraerFactura(ordenId: string) {
   const profile = await requireProfile();
   if (!ROLES_LANDED_COST.includes(profile.rol)) {
@@ -61,7 +119,7 @@ export async function extraerFactura(ordenId: string) {
 
   const { data: documentos } = await supabase
     .from("documentos")
-    .select("url_archivo")
+    .select("id, url_archivo, fecha_carga")
     .eq("orden_id", ordenId)
     .eq("tipo", "factura_comercial")
     .order("fecha_carga", { ascending: false });
@@ -70,78 +128,36 @@ export async function extraerFactura(ordenId: string) {
     return { error: "Esta orden no tiene ninguna factura comercial cargada todavía.", data: null };
   }
 
-  const bloques: Array<
-    | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } }
-    | { type: "image"; source: { type: "base64"; media_type: ImageMediaType; data: string } }
-  > = [];
-
-  for (const documento of documentos) {
-    const extension = documento.url_archivo.split(".").pop()?.toLowerCase() ?? "";
-    const esPdf = extension === "pdf";
-    const imageMediaType = IMAGE_MEDIA_TYPES[extension];
-    if (!esPdf && !imageMediaType) continue; // se ignoran formatos que la IA no puede leer (p. ej. .docx)
-
-    const { data: archivo, error: downloadError } = await supabase.storage
-      .from("documentos")
-      .download(documento.url_archivo);
-    if (downloadError || !archivo) continue;
-
-    const arrayBuffer = await archivo.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-
-    bloques.push(
-      esPdf
-        ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
-        : { type: "image", source: { type: "base64", media_type: imageMediaType!, data: base64 } },
-    );
-  }
-
-  if (bloques.length === 0) {
-    return { error: "Las facturas cargadas deben ser PDF o imagen (jpg, png, webp) para poder leerlas con IA.", data: null };
-  }
-
   try {
-    const anthropic = createAnthropicClient();
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 4096,
-      tools: [EXTRAER_TOOL],
-      tool_choice: { type: "tool", name: "reportar_articulos_factura" },
-      messages: [
-        {
-          role: "user",
-          content: [
-            ...bloques,
-            {
-              type: "text",
-              text:
-                bloques.length > 1
-                  ? "Estas son varias facturas comerciales de la misma orden de compra (pueden ser de distintos proveedores). Extrae todos los artículos (código si aparece, nombre, cantidad, precio unitario) de TODAS las facturas juntas, y suma el total FOB de todas."
-                  : "Extrae todos los artículos (código si aparece, nombre, cantidad, precio unitario) y el total FOB de esta factura comercial.",
-            },
-          ],
-        },
-      ],
-    });
+    // Cada factura se lee por separado para poder saber de cuál salió cada artículo
+    // (si hay varias, se combinan facturas de distintos proveedores en una sola
+    // llamada se pierde esa trazabilidad).
+    const resultados = await Promise.all(documentos.map((documento) => leerUnaFactura(supabase, documento)));
+    const facturas = resultados.filter((f): f is FacturaExtraida => f !== null);
 
-    const toolUse = message.content.find((block) => block.type === "tool_use");
-    if (!toolUse || toolUse.type !== "tool_use") {
-      return { error: "No se pudo leer la factura.", data: null };
+    if (facturas.length === 0) {
+      return {
+        error: "Las facturas cargadas deben ser PDF o imagen (jpg, png, webp) para poder leerlas con IA.",
+        data: null,
+      };
     }
-
-    const resultado = toolUse.input as { articulos: ArticuloExtraido[]; total_fob: number };
 
     const { data: orden } = await supabase.from("ordenes_compra").select("proveedor_id").eq("id", ordenId).single();
-    if (orden && resultado.articulos.length > 0) {
-      const filas = resultado.articulos.map((articulo) => ({
-        proveedor_id: orden.proveedor_id,
-        articulo: articulo.nombre,
-        precio: articulo.precio_unitario,
-      }));
-      await supabase.from("historial_precios").insert(filas);
+    if (orden) {
+      const filas = facturas.flatMap((factura) =>
+        factura.articulos.map((articulo) => ({
+          proveedor_id: orden.proveedor_id,
+          documento_id: factura.documentoId,
+          articulo: articulo.nombre,
+          precio: articulo.precio_unitario,
+        })),
+      );
+      if (filas.length > 0) await supabase.from("historial_precios").insert(filas);
     }
 
-    return { error: null, data: { articulos: resultado.articulos, totalFob: resultado.total_fob } };
+    const totalFob = facturas.reduce((suma, f) => suma + f.totalFob, 0);
+
+    return { error: null, data: { facturas, totalFob } };
   } catch (err) {
     return { error: `Error al leer la factura: ${err instanceof Error ? err.message : "desconocido"}`, data: null };
   }
