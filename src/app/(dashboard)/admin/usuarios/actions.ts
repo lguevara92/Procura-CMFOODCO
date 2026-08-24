@@ -104,6 +104,22 @@ export async function actualizarOrdenanteOperacion(operacionId: string, clickupO
   return { error: null };
 }
 
+export async function reenviarInvitacion(email: string) {
+  try {
+    await requireAdminSistema();
+  } catch {
+    return { error: "No tienes permiso para reenviar invitaciones." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/reset-password`,
+  });
+  if (error) return { error: error.message };
+
+  return { error: null, ok: true };
+}
+
 export async function actualizarUsuario(userId: string, rol: UserRole, operacionId: string | null) {
   try {
     await requireAdminSistema();

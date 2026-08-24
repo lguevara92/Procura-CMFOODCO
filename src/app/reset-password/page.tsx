@@ -7,18 +7,32 @@ import { createClient } from "@/lib/supabase/client";
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
+    const params = new URLSearchParams(window.location.search);
 
     // Enlace con flujo PKCE (?code=...): intercambiarlo por una sesión.
-    const code = new URLSearchParams(window.location.search).get("code");
+    const code = params.get("code");
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) setError(error.message);
+        if (error) setLinkError(error.message);
+        setReady(true);
+      });
+      return;
+    }
+
+    // Enlace con flujo de OTP (?token_hash=...&type=recovery), el formato
+    // que usa Supabase por defecto en el correo de "configura tu contraseña".
+    const tokenHash = params.get("token_hash");
+    const type = params.get("type");
+    if (tokenHash && type === "recovery") {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ error }) => {
+        if (error) setLinkError(error.message);
         setReady(true);
       });
       return;
@@ -34,7 +48,17 @@ export default function ResetPasswordPage() {
       if (data.session) setReady(true);
     });
 
-    return () => listener.subscription.unsubscribe();
+    // Si ninguno de los flujos anteriores aplica (o el enlace ya venció),
+    // no dejar "Validando el enlace..." girando para siempre.
+    const timeout = setTimeout(() => {
+      setLinkError("El enlace no es válido o ya venció. Pide que te reenvíen la invitación.");
+      setReady(true);
+    }, 6000);
+
+    return () => {
+      listener.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -64,6 +88,8 @@ export default function ResetPasswordPage() {
 
         {!ready ? (
           <p className="text-center text-sm text-slate-500">Validando el enlace...</p>
+        ) : linkError ? (
+          <p className="text-center text-sm text-red-600">{linkError}</p>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex flex-col gap-1">

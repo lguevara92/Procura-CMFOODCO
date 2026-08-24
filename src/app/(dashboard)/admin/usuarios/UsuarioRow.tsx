@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { actualizarUsuario } from "./actions";
+import { actualizarUsuario, reenviarInvitacion } from "./actions";
 import { ROLE_LABELS } from "@/lib/constants";
 import type { Operacion, UserProfile, UserRole } from "@/types/database";
 
@@ -21,6 +21,21 @@ export function UsuarioRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [guardado, setGuardado] = useState(false);
+  const [reenviando, startReenvio] = useTransition();
+  const [reenviado, setReenviado] = useState(false);
+
+  function reenviar() {
+    setReenviado(false);
+    setError(null);
+    startReenvio(async () => {
+      const res = await reenviarInvitacion(usuario.email);
+      if (res?.error) setError(res.error);
+      else {
+        setReenviado(true);
+        setTimeout(() => setReenviado(false), 3000);
+      }
+    });
+  }
 
   function guardar(nuevoRol: UserRole, nuevaOperacionId: string) {
     setError(null);
@@ -79,9 +94,22 @@ export function UsuarioRow({
         </select>
       </td>
       <td className="py-2 text-xs">
-        {error && <span className="text-red-600">{error}</span>}
-        {guardado && <span className="text-emerald-700">Guardado</span>}
-        {esUsuarioActual && !error && !guardado && <span className="text-slate-400">No puedes editarte a ti mismo</span>}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={reenviar}
+            disabled={reenviando}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+          >
+            {reenviando ? "Enviando..." : "Reenviar invitación"}
+          </button>
+          {error && <span className="text-red-600">{error}</span>}
+          {guardado && <span className="text-emerald-700">Guardado</span>}
+          {reenviado && <span className="text-emerald-700">Invitación enviada</span>}
+          {esUsuarioActual && !error && !guardado && !reenviado && (
+            <span className="text-slate-400">No puedes editarte a ti mismo</span>
+          )}
+        </div>
       </td>
     </tr>
   );
