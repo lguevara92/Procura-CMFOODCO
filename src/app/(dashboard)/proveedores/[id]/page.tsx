@@ -330,8 +330,15 @@ function HistorialPreciosSection({
             name="q"
             defaultValue={query}
             placeholder="Ej. napkin..."
+            list={`articulos-${proveedorId}`}
+            autoComplete="off"
             className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
           />
+          <datalist id={`articulos-${proveedorId}`}>
+            {articulosUnicos.map((articulo) => (
+              <option key={articulo} value={articulo} />
+            ))}
+          </datalist>
         </div>
         <button type="submit" className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
           Buscar
@@ -342,19 +349,6 @@ function HistorialPreciosSection({
           </Link>
         )}
       </form>
-
-      {articulosUnicos.length > 0 && (
-        <details className="mb-3 rounded-md bg-slate-50 p-2 text-sm">
-          <summary className="cursor-pointer text-xs font-medium text-slate-600">
-            Ver productos ya registrados ({articulosUnicos.length})
-          </summary>
-          <ul className="mt-2 flex flex-col gap-0.5 text-slate-700">
-            {articulosUnicos.map((articulo) => (
-              <li key={articulo}>{articulo}</li>
-            ))}
-          </ul>
-        </details>
-      )}
 
       {historial.length === 0 ? (
         <p className="text-sm text-slate-400">
