@@ -6,6 +6,7 @@ import { evaluarChecklist } from "@/lib/checklist";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
 import { EstatusSelect } from "./EstatusSelect";
+import { BorrarOrdenButton } from "./BorrarOrdenButton";
 import { DocumentoUploadForm } from "./DocumentoUploadForm";
 import { CotizacionForm } from "./CotizacionForm";
 import { CotizacionRow } from "./CotizacionRow";
@@ -100,6 +101,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
         <div className="flex items-center gap-3">
           <StatusBadge estatus={orden.estatus as OrdenEstatus} />
           {esStaff && <EstatusSelect ordenId={orden.id} estatusActual={orden.estatus as OrdenEstatus} />}
+          {profile.rol === "admin_sistema" && <BorrarOrdenButton ordenId={orden.id} />}
         </div>
       </div>
 
