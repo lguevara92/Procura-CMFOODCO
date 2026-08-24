@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS, ROLES_STAFF } from "@/lib/constants";
 import { signOut } from "@/app/login/actions";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
   const canSeeAdminChecklist = profile.rol === "administracion" || profile.rol === "admin_sistema";
+  const canSeeProveedores = ROLES_STAFF.includes(profile.rol);
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -28,6 +29,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               >
                 Checklist de documentos
+              </Link>
+            )}
+            {canSeeProveedores && (
+              <Link
+                href="/proveedores"
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              >
+                Proveedores
               </Link>
             )}
           </nav>
