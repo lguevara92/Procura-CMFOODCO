@@ -23,6 +23,10 @@ create type orden_estatus as enum (
 create table public.operaciones (
   id uuid primary key default gen_random_uuid(),
   nombre text not null unique,
+  -- Razón social exacta del campo "ORDENANTE" en la lista de ClickUp
+  -- "SOLICITUD DE PAGOS FINANZAS" — null si esta operación aún no tiene
+  -- una solicitud de pago que enviar.
+  clickup_ordenante text,
   created_at timestamptz not null default now()
 );
 
@@ -41,6 +45,15 @@ create table public.proveedores (
   nombre text not null,
   tipo proveedor_tipo not null,
   contacto text,
+  -- Datos bancarios para autocompletar la solicitud de pago en ClickUp.
+  correo text,
+  ruc text,
+  banco text,
+  numero_cuenta text,
+  swift text,
+  direccion_banco text,
+  tipo_cuenta text,
+  direccion_internacional text,
   created_at timestamptz not null default now()
 );
 

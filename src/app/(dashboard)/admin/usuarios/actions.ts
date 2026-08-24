@@ -72,10 +72,11 @@ export async function crearOperacion(_prevState: { error: string | null; ok?: bo
   }
 
   const nombre = String(formData.get("nombre") ?? "").trim();
+  const clickupOrdenante = String(formData.get("clickup_ordenante") ?? "").trim() || null;
   if (!nombre) return { error: "Escribe un nombre para la operación." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("operaciones").insert({ nombre });
+  const { error } = await supabase.from("operaciones").insert({ nombre, clickup_ordenante: clickupOrdenante });
   if (error) {
     const mensaje = error.code === "23505" ? "Ya existe una operación con ese nombre." : error.message;
     return { error: mensaje };
@@ -83,6 +84,24 @@ export async function crearOperacion(_prevState: { error: string | null; ok?: bo
 
   revalidatePath("/admin/usuarios");
   return { error: null, ok: true };
+}
+
+export async function actualizarOrdenanteOperacion(operacionId: string, clickupOrdenante: string | null) {
+  try {
+    await requireAdminSistema();
+  } catch {
+    return { error: "No tienes permiso para editar operaciones." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("operaciones")
+    .update({ clickup_ordenante: clickupOrdenante })
+    .eq("id", operacionId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/usuarios");
+  return { error: null };
 }
 
 export async function actualizarUsuario(userId: string, rol: UserRole, operacionId: string | null) {

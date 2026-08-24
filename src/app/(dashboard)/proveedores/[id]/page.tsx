@@ -5,6 +5,7 @@ import { requireProfile } from "@/lib/auth";
 import { ROLES_STAFF } from "@/lib/constants";
 import { parseDiasTransito, promedio } from "@/lib/proveedorMetrics";
 import { StatusBadge } from "@/components/StatusBadge";
+import { DatosBancariosForm } from "./DatosBancariosForm";
 import type {
   CotizacionFlete,
   Documento,
@@ -117,6 +118,15 @@ export default async function ProveedorDetallePage({
     return (
       <div className="flex flex-col gap-6">
         <FichaHeader proveedor={proveedor} />
+
+        <details className="rounded-xl border border-slate-200 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+            Datos bancarios (para solicitud de pago)
+          </summary>
+          <div className="mt-3">
+            <DatosBancariosForm proveedor={proveedor} />
+          </div>
+        </details>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat label="Órdenes históricas" value={String(ordenes.length)} />
@@ -237,6 +247,15 @@ export default async function ProveedorDetallePage({
   return (
     <div className="flex flex-col gap-6">
       <FichaHeader proveedor={proveedor} />
+
+      <details className="rounded-xl border border-slate-200 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          Datos bancarios (para solicitud de pago)
+        </summary>
+        <div className="mt-3">
+          <DatosBancariosForm proveedor={proveedor} />
+        </div>
+      </details>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Stat label="Cotizaciones enviadas" value={String(cotizaciones.length)} />

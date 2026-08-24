@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { CrearUsuarioForm } from "./CrearUsuarioForm";
 import { CrearOperacionForm } from "./CrearOperacionForm";
 import { UsuarioRow } from "./UsuarioRow";
+import { OperacionRow } from "./OperacionRow";
 import type { Operacion, UserProfile } from "@/types/database";
 
 export default async function UsuariosPage() {
@@ -51,14 +52,16 @@ export default async function UsuariosPage() {
 
       <div>
         <h2 className="mb-2 text-sm font-semibold text-slate-900">Operaciones</h2>
+        <p className="mb-2 text-xs text-slate-500">
+          La razón social se usa para autocompletar el campo &ldquo;Ordenante&rdquo; al enviar una solicitud de pago a
+          ClickUp.
+        </p>
         {(operaciones ?? []).length > 0 && (
-          <ul className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap gap-2">
             {(operaciones as Operacion[]).map((op) => (
-              <li key={op.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                {op.nombre}
-              </li>
+              <OperacionRow key={op.id} operacion={op} />
             ))}
-          </ul>
+          </div>
         )}
         <CrearOperacionForm />
       </div>

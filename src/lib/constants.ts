@@ -51,3 +51,27 @@ export const ROLES_STAFF: UserRole[] = ["compras", "logistica", "administracion"
 export const ROLES_LANDED_COST: UserRole[] = ["logistica", "admin_sistema"];
 export const ROLES_TRACKING: UserRole[] = ["logistica", "admin_sistema"];
 export const DIAS_ALERTA_TRACKING = 5;
+
+// Deben coincidir letra por letra con las opciones del campo "ORDENANTE" en
+// la lista de ClickUp "SOLICITUD DE PAGOS FINANZAS".
+export const CLICKUP_ORDENANTES = [
+  "CM SANTA MARIA, S.A.",
+  "CM COSTA DEL ESTE, S.A.",
+  "CM PINK MULTIPLAZA, S.A.",
+  "CM LUCCA TC, S.A.",
+  "CM MULTIPLAZA, S.A.",
+  "CM SAN FRANCISCO, S.A.",
+  "CM EL CANGREJO, S.A.",
+  "CM BELLA VISTA, S.A.",
+  "CM VIA ISRAEL, S.A.",
+  "INVERSIONES MERLOY, S.A.",
+  "CM OCEANIA, S.A.",
+  "CM CENTRO MIRADOR, S.A.",
+  "PFG OPERADORA, S.A.",
+  "CM TOCUMEN, S.A.",
+  "CM BRISAS, S.A.",
+  "CM DORAL, S.A",
+] as const;
+
+// Deben coincidir letra por letra con las opciones del campo "TIPO DE CUENTA".
+export const CLICKUP_TIPOS_CUENTA = ["Ahorro", "Corriente", "Internacional"] as const;

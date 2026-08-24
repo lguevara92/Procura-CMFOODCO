@@ -21,6 +21,7 @@ export type OrdenEstatus =
 export interface Operacion {
   id: string;
   nombre: string;
+  clickup_ordenante: string | null;
   created_at: string;
 }
 
@@ -38,6 +39,14 @@ export interface Proveedor {
   nombre: string;
   tipo: ProveedorTipo;
   contacto: string | null;
+  correo: string | null;
+  ruc: string | null;
+  banco: string | null;
+  numero_cuenta: string | null;
+  swift: string | null;
+  direccion_banco: string | null;
+  tipo_cuenta: string | null;
+  direccion_internacional: string | null;
   created_at: string;
 }
 
