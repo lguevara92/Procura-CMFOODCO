@@ -278,7 +278,12 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
           )}
 
           {puedeCalcularLandedCost && (
-            <LandedCostSection ordenId={orden.id} hayFactura={hayFacturaComercial} hayPackingList={hayPackingList} />
+            <LandedCostSection
+              ordenId={orden.id}
+              hayFactura={hayFacturaComercial}
+              hayPackingList={hayPackingList}
+              ultimoLandedCost={ultimoLandedCost}
+            />
           )}
         </section>
       )}

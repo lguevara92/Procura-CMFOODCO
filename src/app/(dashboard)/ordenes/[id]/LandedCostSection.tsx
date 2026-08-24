@@ -1,36 +1,49 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { extraerFactura } from "./factura-actions";
-import { extraerPackingList } from "./packing-list-actions";
+import { useMemo, useState, useTransition } from "react";
+import { extraerFactura, type ArticuloExtraido } from "./factura-actions";
+import { extraerPackingList, type ArticuloPacking } from "./packing-list-actions";
 import { LandedCostForm } from "./LandedCostForm";
-
-interface ArticuloExtraido {
-  nombre: string;
-  cantidad: number;
-  precio_unitario: number;
-}
+import { DesgloseArticulos } from "./DesgloseArticulos";
+import { combinarArticulos } from "@/lib/desgloseArticulos";
+import type { LandedCost } from "@/types/database";
 
 export function LandedCostSection({
   ordenId,
   hayFactura,
   hayPackingList,
+  ultimoLandedCost,
 }: {
   ordenId: string;
   hayFactura: boolean;
   hayPackingList: boolean;
+  ultimoLandedCost: LandedCost | null;
 }) {
   const [facturaPending, startFacturaTransition] = useTransition();
   const [facturaError, setFacturaError] = useState<string | null>(null);
-  const [articulos, setArticulos] = useState<ArticuloExtraido[] | null>(null);
+  const [articulosFactura, setArticulosFactura] = useState<ArticuloExtraido[] | null>(null);
   const [fobSugerido, setFobSugerido] = useState<number | undefined>(undefined);
 
   const [packingPending, startPackingTransition] = useTransition();
   const [packingError, setPackingError] = useState<string | null>(null);
+  const [articulosPacking, setArticulosPacking] = useState<ArticuloPacking[] | null>(null);
   const [cajasSugeridas, setCajasSugeridas] = useState<number | undefined>(undefined);
   const [cbmSugerido, setCbmSugerido] = useState<number | undefined>(undefined);
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "USD" });
+
+  const articulosCombinados = useMemo(
+    () => (articulosFactura ? combinarArticulos(articulosFactura, articulosPacking ?? []) : null),
+    [articulosFactura, articulosPacking],
+  );
+
+  const gastosCompartidos = ultimoLandedCost
+    ? ultimoLandedCost.flete +
+      ultimoLandedCost.seguro +
+      ultimoLandedCost.aranceles +
+      ultimoLandedCost.honorarios +
+      ultimoLandedCost.gastos_locales
+    : 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -51,7 +64,7 @@ export function LandedCostSection({
                     setFacturaError(res.error ?? "No se pudo leer la factura.");
                     return;
                   }
-                  setArticulos(res.data.articulos);
+                  setArticulosFactura(res.data.articulos);
                   setFobSugerido(res.data.totalFob);
                 })
               }
@@ -63,7 +76,7 @@ export function LandedCostSection({
 
           {facturaError && <p className="mt-2 text-xs text-red-600">{facturaError}</p>}
 
-          {articulos && (
+          {articulosFactura && (
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="text-slate-500">
@@ -74,7 +87,7 @@ export function LandedCostSection({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {articulos.map((articulo, i) => (
+                  {articulosFactura.map((articulo, i) => (
                     <tr key={i}>
                       <td className="py-1 pr-3">{articulo.nombre}</td>
                       <td className="py-1 pr-3">{articulo.cantidad}</td>
@@ -97,7 +110,7 @@ export function LandedCostSection({
         <div className="rounded-lg border border-dashed border-slate-300 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-slate-600">
-              Extrae el total de cajas y el CBM del packing list con IA (si hay más de uno, los suma).
+              Extrae cajas, CBM y peso por artículo del packing list con IA (si hay más de uno, los combina).
             </p>
             <button
               type="button"
@@ -110,8 +123,9 @@ export function LandedCostSection({
                     setPackingError(res.error ?? "No se pudo leer el packing list.");
                     return;
                   }
-                  setCajasSugeridas(res.data.total_cajas);
-                  setCbmSugerido(res.data.cbm_total);
+                  setArticulosPacking(res.data.articulos);
+                  setCajasSugeridas(res.data.totalCajas);
+                  setCbmSugerido(res.data.cbmTotal);
                 })
               }
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
@@ -132,6 +146,10 @@ export function LandedCostSection({
       )}
 
       <LandedCostForm ordenId={ordenId} fobInicial={fobSugerido} cajasInicial={cajasSugeridas} cbmInicial={cbmSugerido} />
+
+      {articulosCombinados && articulosCombinados.length > 0 && ultimoLandedCost && (
+        <DesgloseArticulos articulos={articulosCombinados} gastosCompartidos={gastosCompartidos} />
+      )}
     </div>
   );
 }

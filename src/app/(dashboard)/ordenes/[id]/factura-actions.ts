@@ -5,7 +5,8 @@ import { requireProfile } from "@/lib/auth";
 import { createAnthropicClient } from "@/lib/anthropic";
 import { ROLES_LANDED_COST } from "@/lib/constants";
 
-interface ArticuloExtraido {
+export interface ArticuloExtraido {
+  codigo: string;
   nombre: string;
   cantidad: number;
   precio_unitario: number;
@@ -32,6 +33,7 @@ const EXTRAER_TOOL = {
         items: {
           type: "object",
           properties: {
+            codigo: { type: "string", description: "Código, SKU o referencia del artículo si aparece; si no, dejar vacío." },
             nombre: { type: "string" },
             cantidad: { type: "number" },
             precio_unitario: { type: "number" },
@@ -114,8 +116,8 @@ export async function extraerFactura(ordenId: string) {
               type: "text",
               text:
                 bloques.length > 1
-                  ? "Estas son varias facturas comerciales de la misma orden de compra (pueden ser de distintos proveedores). Extrae todos los artículos (nombre, cantidad, precio unitario) de TODAS las facturas juntas, y suma el total FOB de todas."
-                  : "Extrae todos los artículos (nombre, cantidad, precio unitario) y el total FOB de esta factura comercial.",
+                  ? "Estas son varias facturas comerciales de la misma orden de compra (pueden ser de distintos proveedores). Extrae todos los artículos (código si aparece, nombre, cantidad, precio unitario) de TODAS las facturas juntas, y suma el total FOB de todas."
+                  : "Extrae todos los artículos (código si aparece, nombre, cantidad, precio unitario) y el total FOB de esta factura comercial.",
             },
           ],
         },
