@@ -18,8 +18,16 @@ import type {
 
 const fmtUsd = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "USD" });
 
-export default async function ProveedorDetallePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProveedorDetallePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string }>;
+}) {
   const { id } = await params;
+  const { q } = await searchParams;
+  const query = q?.trim() ?? "";
   const profile = await requireProfile();
   if (!ROLES_STAFF.includes(profile.rol)) redirect("/ordenes");
 
@@ -36,8 +44,14 @@ export default async function ProveedorDetallePage({ params }: { params: Promise
     .order("fecha", { ascending: false })
     .order("articulo");
 
-  const historial = (historialPrecios ?? []) as HistorialPrecio[];
-  const documentoIds = Array.from(new Set(historial.map((h) => h.documento_id).filter((v): v is string => !!v)));
+  const historialCompleto = (historialPrecios ?? []) as HistorialPrecio[];
+  const historial = query
+    ? historialCompleto.filter((h) => h.articulo.toLowerCase().includes(query.toLowerCase()))
+    : historialCompleto;
+  const documentoIds = Array.from(new Set(historialCompleto.map((h) => h.documento_id).filter((v): v is string => !!v)));
+  const articulosUnicos = Array.from(new Set(historialCompleto.map((h) => h.articulo))).sort((a, b) =>
+    a.localeCompare(b),
+  );
   const { data: documentosHistorial } = documentoIds.length
     ? await supabase.from("documentos").select("id, fecha_carga, url_archivo").in("id", documentoIds)
     : { data: [] as Pick<Documento, "id" | "fecha_carga" | "url_archivo">[] };
@@ -174,7 +188,13 @@ export default async function ProveedorDetallePage({ params }: { params: Promise
           </ul>
         </section>
 
-        <HistorialPreciosSection historial={historial} facturasPorId={facturasPorId} />
+        <HistorialPreciosSection
+          historial={historial}
+          facturasPorId={facturasPorId}
+          query={query}
+          articulosUnicos={articulosUnicos}
+          proveedorId={id}
+        />
       </div>
     );
   }
@@ -245,7 +265,13 @@ export default async function ProveedorDetallePage({ params }: { params: Promise
         )}
       </section>
 
-      <HistorialPreciosSection historial={historial} facturasPorId={facturasPorId} />
+      <HistorialPreciosSection
+        historial={historial}
+        facturasPorId={facturasPorId}
+        query={query}
+        articulosUnicos={articulosUnicos}
+        proveedorId={id}
+      />
     </div>
   );
 }
@@ -274,9 +300,15 @@ function Stat({ label, value }: { label: string; value: string }) {
 function HistorialPreciosSection({
   historial,
   facturasPorId,
+  query,
+  articulosUnicos,
+  proveedorId,
 }: {
   historial: HistorialPrecio[];
   facturasPorId: Map<string, { fechaCarga: string; signedUrl: string | null }>;
+  query: string;
+  articulosUnicos: string[];
+  proveedorId: string;
 }) {
   const grupos = new Map<string, HistorialPrecio[]>();
   for (const h of historial) {
@@ -289,9 +321,46 @@ function HistorialPreciosSection({
   return (
     <section className="rounded-xl border border-slate-200 p-4">
       <h2 className="mb-3 text-sm font-semibold text-slate-900">Histórico de precios por factura</h2>
+
+      <form action={`/proveedores/${proveedorId}`} className="mb-3 flex items-end gap-2">
+        <div className="flex flex-1 flex-col gap-1">
+          <label className="text-xs font-medium text-slate-600">Buscar producto de este proveedor</label>
+          <input
+            type="text"
+            name="q"
+            defaultValue={query}
+            placeholder="Ej. napkin..."
+            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+        <button type="submit" className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+          Buscar
+        </button>
+        {query && (
+          <Link href={`/proveedores/${proveedorId}`} className="text-sm text-slate-500 hover:underline">
+            Limpiar
+          </Link>
+        )}
+      </form>
+
+      {articulosUnicos.length > 0 && (
+        <details className="mb-3 rounded-md bg-slate-50 p-2 text-sm">
+          <summary className="cursor-pointer text-xs font-medium text-slate-600">
+            Ver productos ya registrados ({articulosUnicos.length})
+          </summary>
+          <ul className="mt-2 flex flex-col gap-0.5 text-slate-700">
+            {articulosUnicos.map((articulo) => (
+              <li key={articulo}>{articulo}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {historial.length === 0 ? (
         <p className="text-sm text-slate-400">
-          Aún no hay historial — se llena automáticamente cuando se extraen facturas con IA en landed cost.
+          {query
+            ? "Ningún producto de este proveedor coincide con la búsqueda."
+            : "Aún no hay historial — se llena automáticamente cuando se extraen facturas con IA en landed cost."}
         </p>
       ) : (
         <div className="flex flex-col gap-4">
