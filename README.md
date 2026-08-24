@@ -3,10 +3,9 @@
 Plataforma interna para Compras/Procura, Logística y Administración: ciclo completo de una compra
 internacional, desde cotización de flete hasta landed cost, con checklist de documentos y trazabilidad.
 
-Este repo contiene la **Fase 1**: login + roles, CRUD de órdenes de compra, repositorio de documentos
-y checklist automático (incluyendo la vista de Administración). Las fases siguientes (cotizaciones de
-flete, landed cost, base de datos de proveedores, tracking) se construyen sobre esta misma base — el
-esquema de las tablas para esas fases ya está incluido en `supabase/schema.sql`.
+Fases 1 a 5 completas: login + roles, CRUD de órdenes, repositorio de documentos con checklist,
+cotizaciones de flete, landed cost (con escáner de facturas/packing list por IA y PDF automático),
+base de datos de proveedores, y rastreo de embarques.
 
 ## 1. Requisitos
 
@@ -72,24 +71,31 @@ la tabla `users`:
 | `operacion` | Solo lectura de las órdenes de su propia operación (estatus, sin acceso al repositorio de documentos) |
 | `admin_sistema` | Todo lo anterior + gestión de usuarios, roles y catálogo de proveedores |
 
-## 7. Identidad visual pendiente
+## 7. Servicios externos opcionales
 
-El header usa un placeholder ("CM" sobre fondo oscuro) en vez del logo real de CM Foodco. Para
-reemplazarlo:
+Cada uno se activa solo con su variable de entorno — sin ella, la función relacionada muestra un error
+o se omite silenciosamente, el resto de la app sigue funcionando:
 
-1. Coloca el archivo del logo (idealmente `.svg` o `.png` con fondo transparente) en `public/logo.svg`.
-2. En [`src/app/(dashboard)/layout.tsx`](src/app/(dashboard)/layout.tsx) y
-   [`src/app/login/page.tsx`](src/app/login/page.tsx), reemplaza el `<div>` con las iniciales "CM" por
-   `<img src="/logo.svg" alt="CM Foodco" className="h-9 w-9" />`.
-3. El color de acento (`--accent` en [`src/app/globals.css`](src/app/globals.css)) es un placeholder —
-   ajústalo al manual de marca de CM Foodco o al color principal del logo.
+| Variable | Para qué | Dónde se obtiene |
+|---|---|---|
+| `RESEND_API_KEY` | Notificaciones por correo (cotización elegida, landed cost listo) | resend.com → API Keys |
+| `ANTHROPIC_API_KEY` | Escáner de facturas/packing list con IA en landed cost | console.anthropic.com → API Keys |
+| `TRACKINGMORE_API_KEY` | Rastreo de embarques | trackingmore.com → API |
+| `TRACKINGMORE_WEBHOOK_SECRET` | Protege el webhook de TrackingMore | cualquier cadena aleatoria larga, la generas tú |
+| `SUPABASE_SERVICE_ROLE_KEY` | Permite que el webhook de TrackingMore escriba sin sesión de usuario | Supabase → Project Settings → API Keys → `service_role` (secreta) |
 
-## 8. Próximas fases
+### Configurar el webhook de TrackingMore
 
-2. Cotizaciones de flete + selección + notificación por correo.
-3. Landed cost + envío automático a operación + histórico.
-4. Base de datos de proveedores con métricas e histórico de precios, dashboards.
-5. Rastreo unificado de embarques (AfterShip / 17TRACK / TrackingMore) + alertas.
+Para que el estatus se actualice solo (sin depender del botón "Actualizar" manual):
 
-El modelo de datos completo para estas fases (`cotizaciones_flete`, `landed_costs`,
-`historial_precios`, `tracking`) ya existe en la base de datos desde la Fase 1.
+1. En el dashboard de TrackingMore, ve a **Settings → Webhook**.
+2. Pon como URL: `https://tu-dominio.vercel.app/api/webhooks/trackingmore?secret=TU_TRACKINGMORE_WEBHOOK_SECRET`
+   (el mismo valor que pusiste en la variable de entorno).
+3. Guarda. TrackingMore va a llamar esa URL cada vez que cambie el estatus de una guía registrada.
+
+## 8. Roadmap pendiente
+
+- Integración con ClickUp para sincronizar solicitudes de pago a finanzas al crear una orden (pendiente
+  de que IT confirme la cuenta/lista correcta).
+- Alertas por correo cuando un embarque lleva varios días sin actualización (hoy solo se muestra como
+  aviso visual en `/tracking`).

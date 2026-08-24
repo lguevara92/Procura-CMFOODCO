@@ -10,8 +10,10 @@ import { DocumentoUploadForm } from "./DocumentoUploadForm";
 import { CotizacionForm } from "./CotizacionForm";
 import { CotizacionRow } from "./CotizacionRow";
 import { LandedCostSection } from "./LandedCostSection";
-import { ROLES_LANDED_COST } from "@/lib/constants";
-import type { CotizacionFlete, Documento, LandedCost, OrdenEstatus, OrdenEvento, Proveedor } from "@/types/database";
+import { TrackingForm } from "./TrackingForm";
+import { TrackingCard } from "./TrackingCard";
+import { ROLES_LANDED_COST, ROLES_TRACKING } from "@/lib/constants";
+import type { CotizacionFlete, Documento, LandedCost, OrdenEstatus, OrdenEvento, Proveedor, Tracking } from "@/types/database";
 
 const ROLES_COTIZACIONES = ["logistica", "admin_sistema"];
 
@@ -31,21 +33,29 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
   const puedeGestionarCotizaciones = ROLES_COTIZACIONES.includes(profile.rol);
 
   const puedeCalcularLandedCost = ROLES_LANDED_COST.includes(profile.rol);
+  const puedeGestionarTracking = ROLES_TRACKING.includes(profile.rol);
 
-  const [{ data: documentos }, { data: eventos }, { data: cotizaciones }, { data: proveedoresLogisticos }, { data: landedCosts }] =
-    await Promise.all([
-      supabase.from("documentos").select("*").eq("orden_id", id).order("fecha_carga", { ascending: false }),
-      supabase.from("orden_eventos").select("*").eq("orden_id", id).order("fecha", { ascending: true }),
-      supabase
-        .from("cotizaciones_flete")
-        .select("*, proveedor:proveedores(nombre)")
-        .eq("orden_id", id)
-        .order("costo", { ascending: true }),
-      puedeGestionarCotizaciones
-        ? supabase.from("proveedores").select("*").eq("tipo", "logistica").order("nombre")
-        : Promise.resolve({ data: [] as Proveedor[] }),
-      supabase.from("landed_costs").select("*").eq("orden_id", id).order("fecha_calculo", { ascending: false }),
-    ]);
+  const [
+    { data: documentos },
+    { data: eventos },
+    { data: cotizaciones },
+    { data: proveedoresLogisticos },
+    { data: landedCosts },
+    { data: trackings },
+  ] = await Promise.all([
+    supabase.from("documentos").select("*").eq("orden_id", id).order("fecha_carga", { ascending: false }),
+    supabase.from("orden_eventos").select("*").eq("orden_id", id).order("fecha", { ascending: true }),
+    supabase
+      .from("cotizaciones_flete")
+      .select("*, proveedor:proveedores(nombre)")
+      .eq("orden_id", id)
+      .order("costo", { ascending: true }),
+    puedeGestionarCotizaciones
+      ? supabase.from("proveedores").select("*").eq("tipo", "logistica").order("nombre")
+      : Promise.resolve({ data: [] as Proveedor[] }),
+    supabase.from("landed_costs").select("*").eq("orden_id", id).order("fecha_calculo", { ascending: false }),
+    supabase.from("tracking").select("*").eq("orden_id", id).order("ultima_actualizacion", { ascending: false }),
+  ]);
 
   const docs = (documentos ?? []) as Documento[];
   const checklist = evaluarChecklist(docs);
@@ -312,6 +322,38 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
               hayPackingList={hayPackingList}
               ultimoLandedCost={ultimoLandedCost}
             />
+          )}
+        </section>
+      )}
+
+      {(esStaff || (trackings ?? []).length > 0) && (
+        <section className="rounded-xl border border-slate-200 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Rastreo del embarque</h2>
+
+          <div className="flex flex-col gap-3">
+            {((trackings ?? []) as Tracking[]).map((tracking) => {
+              // eslint-disable-next-line react-hooks/purity -- página de servidor, se evalúa una vez por request
+              const ahora = Date.now();
+              const diasSinActualizar = Math.floor((ahora - new Date(tracking.ultima_actualizacion).getTime()) / 86400000);
+              return (
+                <TrackingCard
+                  key={tracking.id}
+                  tracking={tracking}
+                  ordenId={orden.id}
+                  puedeActualizar={puedeGestionarTracking}
+                  diasSinActualizar={diasSinActualizar}
+                />
+              );
+            })}
+            {(!trackings || trackings.length === 0) && (
+              <p className="text-sm text-slate-400">Aún no se ha registrado ningún número de guía para esta orden.</p>
+            )}
+          </div>
+
+          {puedeGestionarTracking && (
+            <div className="mt-4">
+              <TrackingForm ordenId={orden.id} />
+            </div>
           )}
         </section>
       )}

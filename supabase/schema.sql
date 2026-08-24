@@ -131,10 +131,13 @@ create table public.tracking (
   id uuid primary key default gen_random_uuid(),
   orden_id uuid not null references public.ordenes_compra (id) on delete cascade,
   numero_guia text not null,
+  courier_code text,
   transportista text,
   estatus text,
+  substatus text,
   ubicacion_actual text,
   fecha_estimada_entrega date,
+  raw_data jsonb,
   ultima_actualizacion timestamptz not null default now()
 );
 

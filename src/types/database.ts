@@ -116,8 +116,10 @@ export interface Tracking {
   id: string;
   orden_id: string;
   numero_guia: string;
+  courier_code: string | null;
   transportista: string | null;
   estatus: string | null;
+  substatus: string | null;
   ubicacion_actual: string | null;
   fecha_estimada_entrega: string | null;
   ultima_actualizacion: string;
