@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { DOCUMENTO_LABELS, DOCUMENTOS_REQUERIDOS } from "@/lib/constants";
+import { DOCUMENTO_LABELS, DOCUMENTOS_REQUERIDOS, TIPO_ENVIO_LABELS } from "@/lib/constants";
 import { evaluarChecklist } from "@/lib/checklist";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -116,6 +116,7 @@ export default async function AdminDocumentosPage({
             <tr>
               <th className="px-4 py-3">Proveedor</th>
               <th className="px-4 py-3">Operación</th>
+              <th className="px-4 py-3">Tipo de envío</th>
               <th className="px-4 py-3">Estatus</th>
               <th className="px-4 py-3">Checklist</th>
               <th className="px-4 py-3">Documentos faltantes</th>
@@ -134,6 +135,7 @@ export default async function AdminDocumentosPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{orden.operacion?.nombre ?? "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{TIPO_ENVIO_LABELS[orden.tipo_envio]}</td>
                   <td className="px-4 py-3">
                     <StatusBadge estatus={orden.estatus as OrdenEstatus} />
                   </td>
@@ -159,7 +161,7 @@ export default async function AdminDocumentosPage({
 
             {ordenes.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                   No hay órdenes que coincidan con los filtros.
                 </td>
               </tr>
