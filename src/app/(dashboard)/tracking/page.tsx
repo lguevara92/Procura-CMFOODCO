@@ -9,9 +9,15 @@ type TrackingConOrden = Tracking & {
   orden: (OrdenCompra & { proveedor: { nombre: string } | null; operacion: { nombre: string } | null }) | null;
 };
 
-export default async function TrackingPage() {
+export default async function TrackingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mostrar_cerradas?: string }>;
+}) {
   await requireProfile();
   const supabase = await createClient();
+  const { mostrar_cerradas } = await searchParams;
+  const mostrarCerradas = mostrar_cerradas === "1";
 
   // RLS ya limita esto: staff ve todo, operación solo sus propias órdenes.
   const { data } = await supabase
@@ -19,13 +25,25 @@ export default async function TrackingPage() {
     .select("*, orden:ordenes_compra(*, proveedor:proveedores(nombre), operacion:operaciones(nombre))")
     .order("ultima_actualizacion", { ascending: false });
 
-  const trackings = (data ?? []) as unknown as TrackingConOrden[];
+  const todosLosTrackings = (data ?? []) as unknown as TrackingConOrden[];
+  const trackingsCerrados = todosLosTrackings.filter((t) => t.orden?.estatus === "cerrado");
+  const trackings = mostrarCerradas
+    ? todosLosTrackings
+    : todosLosTrackings.filter((t) => t.orden?.estatus !== "cerrado");
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Rastreo de embarques</h1>
-        <p className="text-sm text-slate-500">Dónde va cada carga, sin entrar a la página de cada transportista.</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Rastreo de embarques</h1>
+          <p className="text-sm text-slate-500">Dónde va cada carga, sin entrar a la página de cada transportista.</p>
+        </div>
+        <Link
+          href={mostrarCerradas ? "/tracking" : "/tracking?mostrar_cerradas=1"}
+          className="text-sm text-slate-500 hover:underline"
+        >
+          {mostrarCerradas ? "Ocultar cerradas" : `Mostrar cerradas (${trackingsCerrados.length})`}
+        </Link>
       </div>
 
       <div className="flex flex-col gap-3">
