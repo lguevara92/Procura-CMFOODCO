@@ -6,7 +6,9 @@ import { DOCUMENTO_LABELS, DOCUMENTOS_REQUERIDOS, TIPO_ENVIO_LABELS } from "@/li
 import { evaluarChecklist } from "@/lib/checklist";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
 import { StatusBadge } from "@/components/StatusBadge";
-import type { Documento, OrdenCompra, OrdenEstatus, OrdenEvento, Operacion, Proveedor } from "@/types/database";
+import type { Documento, OrdenCompra, OrdenEstatus, OrdenEvento, OrdenTipoEnvio, Operacion, Proveedor } from "@/types/database";
+
+const TIPOS_ENVIO_FILTRO: OrdenTipoEnvio[] = ["paqueteria", "lcl", "fcl"];
 
 type OrdenConRelaciones = OrdenCompra & {
   proveedor: { nombre: string } | null;
@@ -17,14 +19,14 @@ type OrdenConRelaciones = OrdenCompra & {
 export default async function AdminDocumentosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ proveedor_id?: string; operacion_id?: string; dias_min?: string }>;
+  searchParams: Promise<{ proveedor_id?: string; operacion_id?: string; dias_min?: string; tipo_envio?: string }>;
 }) {
   const profile = await requireProfile();
   if (profile.rol !== "administracion" && profile.rol !== "admin_sistema") {
     redirect("/ordenes");
   }
 
-  const { proveedor_id, operacion_id, dias_min } = await searchParams;
+  const { proveedor_id, operacion_id, dias_min, tipo_envio } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
@@ -34,6 +36,7 @@ export default async function AdminDocumentosPage({
 
   if (proveedor_id) query = query.eq("proveedor_id", proveedor_id);
   if (operacion_id) query = query.eq("operacion_id", operacion_id);
+  if (TIPOS_ENVIO_FILTRO.includes(tipo_envio as OrdenTipoEnvio)) query = query.eq("tipo_envio", tipo_envio);
 
   const [{ data: ordenesData }, { data: proveedores }, { data: operaciones }] = await Promise.all([
     query,
@@ -88,6 +91,17 @@ export default async function AdminDocumentosPage({
             {(operaciones as Operacion[] | null)?.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-slate-600">Tipo de envío</label>
+          <select name="tipo_envio" defaultValue={tipo_envio ?? ""} className="rounded-md border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">Todos</option>
+            {TIPOS_ENVIO_FILTRO.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {TIPO_ENVIO_LABELS[tipo]}
               </option>
             ))}
           </select>
