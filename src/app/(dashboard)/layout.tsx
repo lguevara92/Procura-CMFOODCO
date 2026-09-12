@@ -17,6 +17,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <span className="text-lg font-semibold text-slate-900">Procura</span>
 
           <nav className="ml-8 flex items-center gap-1">
+            {canSeeAdminChecklist && (
+              <Link
+                href="/dashboard"
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              >
+                Dashboard
+              </Link>
+            )}
             <Link
               href="/ordenes"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
