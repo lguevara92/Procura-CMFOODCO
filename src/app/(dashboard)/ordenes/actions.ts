@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { ROLES_QUE_CREAN_ORDENES } from "@/lib/constants";
+import type { OrdenTipoEnvio } from "@/types/database";
+
+const TIPOS_ENVIO_VALIDOS: OrdenTipoEnvio[] = ["paqueteria", "lcl", "fcl"];
 
 export async function createOrden(_prevState: { error: string } | null, formData: FormData) {
   const profile = await requireProfile();
@@ -19,6 +22,11 @@ export async function createOrden(_prevState: { error: string } | null, formData
   const operacionNueva = String(formData.get("operacion_nueva") ?? "").trim();
   const incoterm = String(formData.get("incoterm") ?? "").trim();
   const moneda = String(formData.get("moneda") ?? "USD").trim();
+  const tipoEnvio = String(formData.get("tipo_envio") ?? "") as OrdenTipoEnvio;
+
+  if (!TIPOS_ENVIO_VALIDOS.includes(tipoEnvio)) {
+    return { error: "Selecciona un tipo de envío válido." };
+  }
 
   if (proveedorId === "__nuevo__" && proveedorNuevo) {
     const { data, error } = await supabase
@@ -51,6 +59,7 @@ export async function createOrden(_prevState: { error: string } | null, formData
       operacion_id: operacionId,
       incoterm,
       moneda,
+      tipo_envio: tipoEnvio,
       created_by: profile.id,
     })
     .select("id")

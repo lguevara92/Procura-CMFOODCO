@@ -1,4 +1,4 @@
-import type { DocumentoTipo, OrdenEstatus, UserRole } from "@/types/database";
+import type { DocumentoTipo, OrdenEstatus, OrdenTipoEnvio, UserRole } from "@/types/database";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   compras: "Compras/Procura",
@@ -15,6 +15,12 @@ export const ESTATUS_LABELS: Record<OrdenEstatus, string> = {
   en_aduana: "En aduana",
   entregado: "Entregado",
   cerrado: "Cerrado",
+};
+
+export const TIPO_ENVIO_LABELS: Record<OrdenTipoEnvio, string> = {
+  paqueteria: "Paquetería (courier)",
+  lcl: "LCL (carga consolidada)",
+  fcl: "FCL (contenedor completo)",
 };
 
 export const ESTATUS_ORDER: OrdenEstatus[] = [

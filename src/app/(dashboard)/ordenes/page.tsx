@@ -5,6 +5,7 @@ import { ROLES_QUE_CREAN_ORDENES } from "@/lib/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
 import { evaluarChecklist } from "@/lib/checklist";
+import { TIPO_ENVIO_LABELS } from "@/lib/constants";
 import type { Documento, OrdenEstatus, OrdenCompra } from "@/types/database";
 
 type OrdenConRelaciones = OrdenCompra & {
@@ -67,6 +68,7 @@ export default async function OrdenesPage({
               <th className="px-4 py-3">Proveedor</th>
               <th className="px-4 py-3">Operación</th>
               <th className="px-4 py-3">Incoterm</th>
+              <th className="px-4 py-3">Tipo de envío</th>
               <th className="px-4 py-3">Estatus</th>
               <th className="px-4 py-3">Documentos</th>
               <th className="px-4 py-3">Creada</th>
@@ -84,6 +86,7 @@ export default async function OrdenesPage({
                   </td>
                   <td className="px-4 py-3 text-slate-600">{orden.operacion?.nombre ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-600">{orden.incoterm}</td>
+                  <td className="px-4 py-3 text-slate-600">{TIPO_ENVIO_LABELS[orden.tipo_envio]}</td>
                   <td className="px-4 py-3">
                     <StatusBadge estatus={orden.estatus as OrdenEstatus} />
                   </td>
@@ -99,7 +102,7 @@ export default async function OrdenesPage({
 
             {ordenes.length === 0 && !error && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                   Aún no hay órdenes de compra.
                 </td>
               </tr>

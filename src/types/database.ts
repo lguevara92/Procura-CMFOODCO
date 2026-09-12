@@ -18,6 +18,8 @@ export type OrdenEstatus =
   | "entregado"
   | "cerrado";
 
+export type OrdenTipoEnvio = "paqueteria" | "lcl" | "fcl";
+
 export interface Operacion {
   id: string;
   nombre: string;
@@ -57,6 +59,7 @@ export interface OrdenCompra {
   incoterm: string;
   moneda: string;
   estatus: OrdenEstatus;
+  tipo_envio: OrdenTipoEnvio;
   fecha_creacion: string;
   created_by: string | null;
 }

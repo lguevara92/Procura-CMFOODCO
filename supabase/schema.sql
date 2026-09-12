@@ -15,6 +15,10 @@ create type documento_tipo as enum (
 create type orden_estatus as enum (
   'cotizando_flete', 'confirmado', 'en_transito', 'en_aduana', 'entregado', 'cerrado'
 );
+-- paqueteria: envio pequeno via courier (DHL/FedEx/UPS).
+-- lcl (Less than Container Load): carga consolidada, comparte contenedor.
+-- fcl (Full Container Load): contenedor completo, exclusivo.
+create type orden_tipo_envio as enum ('paqueteria', 'lcl', 'fcl');
 
 -- ---------------------------------------------------------------------------
 -- 2. Tablas principales
@@ -64,6 +68,7 @@ create table public.ordenes_compra (
   incoterm text not null,
   moneda text not null default 'USD',
   estatus orden_estatus not null default 'cotizando_flete',
+  tipo_envio orden_tipo_envio not null default 'lcl',
   fecha_creacion timestamptz not null default now(),
   created_by uuid references public.users (id)
 );

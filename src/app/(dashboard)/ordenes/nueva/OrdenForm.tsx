@@ -2,7 +2,10 @@
 
 import { useActionState, useState } from "react";
 import { createOrden } from "../actions";
-import type { Operacion, Proveedor } from "@/types/database";
+import { TIPO_ENVIO_LABELS } from "@/lib/constants";
+import type { Operacion, OrdenTipoEnvio, Proveedor } from "@/types/database";
+
+const TIPOS_ENVIO: OrdenTipoEnvio[] = ["paqueteria", "lcl", "fcl"];
 
 export function OrdenForm({ proveedores, operaciones }: { proveedores: Proveedor[]; operaciones: Operacion[] }) {
   const [state, formAction, pending] = useActionState(createOrden, null);
@@ -86,6 +89,22 @@ export function OrdenForm({ proveedores, operaciones }: { proveedores: Proveedor
             className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900"
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-slate-700">Tipo de envío</label>
+        <select
+          name="tipo_envio"
+          required
+          defaultValue="lcl"
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900"
+        >
+          {TIPOS_ENVIO.map((tipo) => (
+            <option key={tipo} value={tipo}>
+              {TIPO_ENVIO_LABELS[tipo]}
+            </option>
+          ))}
+        </select>
       </div>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}

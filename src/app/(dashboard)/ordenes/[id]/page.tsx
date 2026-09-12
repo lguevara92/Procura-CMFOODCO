@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { DOCUMENTO_LABELS, DOCUMENTOS_REQUERIDOS, ROLES_QUE_SUBEN_DOCUMENTOS, ROLES_STAFF } from "@/lib/constants";
+import { DOCUMENTO_LABELS, DOCUMENTOS_REQUERIDOS, ROLES_QUE_SUBEN_DOCUMENTOS, ROLES_STAFF, TIPO_ENVIO_LABELS } from "@/lib/constants";
 import { evaluarChecklist } from "@/lib/checklist";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
@@ -11,10 +11,11 @@ import { DocumentoUploadForm } from "./DocumentoUploadForm";
 import { CotizacionForm } from "./CotizacionForm";
 import { CotizacionRow } from "./CotizacionRow";
 import { LandedCostSection } from "./LandedCostSection";
+import { SolicitudPagoForm } from "./SolicitudPagoForm";
 import { TrackingForm } from "./TrackingForm";
 import { TrackingCard } from "./TrackingCard";
 import { ROLES_LANDED_COST, ROLES_TRACKING } from "@/lib/constants";
-import type { CotizacionFlete, Documento, LandedCost, OrdenEstatus, OrdenEvento, Proveedor, Tracking } from "@/types/database";
+import type { CotizacionFlete, Documento, LandedCost, OrdenEstatus, OrdenEvento, OrdenTipoEnvio, Proveedor, Tracking } from "@/types/database";
 
 const ROLES_COTIZACIONES = ["logistica", "admin_sistema"];
 
@@ -95,7 +96,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
         <div>
           <h1 className="text-xl font-semibold text-slate-900">{orden.proveedor?.nombre ?? "Orden"}</h1>
           <p className="text-sm text-slate-500">
-            {orden.operacion?.nombre} · {orden.incoterm} · {orden.moneda}
+            {orden.operacion?.nombre} · {orden.incoterm} · {orden.moneda} · {TIPO_ENVIO_LABELS[orden.tipo_envio as OrdenTipoEnvio]}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -324,6 +325,16 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
               hayPackingList={hayPackingList}
               ultimoLandedCost={ultimoLandedCost}
             />
+          )}
+
+          {esStaff && (
+            <div className="mt-4">
+              <SolicitudPagoForm
+                ordenId={orden.id}
+                montoSugerido={ultimoLandedCost?.total ?? 0}
+                monedaSugerida={orden.moneda}
+              />
+            </div>
           )}
         </section>
       )}
