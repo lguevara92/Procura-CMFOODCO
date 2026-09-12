@@ -2,23 +2,43 @@
 
 import { useMemo, useState } from "react";
 import { calcularDesglose, type ArticuloCombinado, type BaseAsignacion } from "@/lib/desgloseArticulos";
+import type { OrdenTipoEnvio } from "@/types/database";
 
 const OPCIONES: { value: BaseAsignacion; label: string }[] = [
-  { value: "cbm", label: "Por CBM (marítimo / LCL)" },
-  { value: "peso", label: "Por peso (aéreo)" },
+  { value: "cbm", label: "Por CBM (LCL / FCL)" },
+  { value: "peso", label: "Por peso (paquetería / aéreo)" },
   { value: "valor", label: "Por valor de factura" },
 ];
+
+// Base de reparto sugerida según el tipo de envío: paquetería normalmente se
+// cobra por peso, LCL y FCL por volumen (CBM) del contenedor.
+const BASE_SUGERIDA_POR_TIPO: Record<OrdenTipoEnvio, BaseAsignacion> = {
+  paqueteria: "peso",
+  lcl: "cbm",
+  fcl: "cbm",
+};
 
 export function DesgloseArticulos({
   articulos,
   gastosCompartidos,
+  tipoEnvio,
 }: {
   articulos: ArticuloCombinado[];
   gastosCompartidos: number;
+  tipoEnvio: OrdenTipoEnvio;
 }) {
   const hayCbm = articulos.some((a) => a.cbm > 0);
   const hayPeso = articulos.some((a) => a.peso > 0);
-  const [base, setBase] = useState<BaseAsignacion>(hayCbm ? "cbm" : hayPeso ? "peso" : "valor");
+  const sugerida = BASE_SUGERIDA_POR_TIPO[tipoEnvio];
+  const baseInicial: BaseAsignacion =
+    (sugerida === "cbm" && hayCbm) || (sugerida === "peso" && hayPeso)
+      ? sugerida
+      : hayCbm
+        ? "cbm"
+        : hayPeso
+          ? "peso"
+          : "valor";
+  const [base, setBase] = useState<BaseAsignacion>(baseInicial);
 
   const desglose = useMemo(() => calcularDesglose(articulos, gastosCompartidos, base), [articulos, gastosCompartidos, base]);
 
@@ -41,6 +61,12 @@ export function DesgloseArticulos({
           ))}
         </select>
       </div>
+
+      {base !== sugerida && (
+        <p className="mb-2 text-xs text-slate-500">
+          Sugerido para este tipo de envío: {sugerida === "cbm" ? "por CBM" : "por peso"}.
+        </p>
+      )}
 
       {avisoSinDatos && (
         <p className="mb-2 text-xs text-amber-600">

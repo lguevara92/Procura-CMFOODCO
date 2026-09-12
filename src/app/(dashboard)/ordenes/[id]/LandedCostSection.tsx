@@ -6,18 +6,20 @@ import { extraerPackingList, type ArticuloPacking } from "./packing-list-actions
 import { LandedCostForm } from "./LandedCostForm";
 import { DesgloseArticulos } from "./DesgloseArticulos";
 import { combinarArticulos } from "@/lib/desgloseArticulos";
-import type { LandedCost } from "@/types/database";
+import type { LandedCost, OrdenTipoEnvio } from "@/types/database";
 
 export function LandedCostSection({
   ordenId,
   hayFactura,
   hayPackingList,
   ultimoLandedCost,
+  tipoEnvio,
 }: {
   ordenId: string;
   hayFactura: boolean;
   hayPackingList: boolean;
   ultimoLandedCost: LandedCost | null;
+  tipoEnvio: OrdenTipoEnvio;
 }) {
   const [facturaPending, startFacturaTransition] = useTransition();
   const [facturaError, setFacturaError] = useState<string | null>(null);
@@ -155,7 +157,7 @@ export function LandedCostSection({
       <LandedCostForm ordenId={ordenId} fobInicial={fobSugerido} cajasInicial={cajasSugeridas} cbmInicial={cbmSugerido} />
 
       {articulosCombinados && articulosCombinados.length > 0 && ultimoLandedCost && (
-        <DesgloseArticulos articulos={articulosCombinados} gastosCompartidos={gastosCompartidos} />
+        <DesgloseArticulos articulos={articulosCombinados} gastosCompartidos={gastosCompartidos} tipoEnvio={tipoEnvio} />
       )}
     </div>
   );

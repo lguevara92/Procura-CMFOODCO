@@ -324,6 +324,7 @@ export default async function OrdenDetallePage({ params }: { params: Promise<{ i
               hayFactura={hayFacturaComercial}
               hayPackingList={hayPackingList}
               ultimoLandedCost={ultimoLandedCost}
+              tipoEnvio={orden.tipo_envio as OrdenTipoEnvio}
             />
           )}
 
