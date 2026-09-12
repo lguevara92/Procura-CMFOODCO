@@ -6,7 +6,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SemaforoBadge } from "@/components/SemaforoBadge";
 import { evaluarChecklist } from "@/lib/checklist";
 import { TIPO_ENVIO_LABELS } from "@/lib/constants";
-import type { Documento, OrdenEstatus, OrdenCompra } from "@/types/database";
+import type { Documento, OrdenEstatus, OrdenCompra, OrdenTipoEnvio } from "@/types/database";
+
+const TIPOS_ENVIO_FILTRO: OrdenTipoEnvio[] = ["paqueteria", "lcl", "fcl"];
 
 type OrdenConRelaciones = OrdenCompra & {
   proveedor: { nombre: string } | null;
@@ -17,12 +19,15 @@ type OrdenConRelaciones = OrdenCompra & {
 export default async function OrdenesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mostrar_cerradas?: string }>;
+  searchParams: Promise<{ mostrar_cerradas?: string; tipo_envio?: string }>;
 }) {
   const profile = await requireProfile();
   const supabase = await createClient();
-  const { mostrar_cerradas } = await searchParams;
+  const { mostrar_cerradas, tipo_envio } = await searchParams;
   const mostrarCerradas = mostrar_cerradas === "1";
+  const filtroTipoEnvio = TIPOS_ENVIO_FILTRO.includes(tipo_envio as OrdenTipoEnvio)
+    ? (tipo_envio as OrdenTipoEnvio)
+    : null;
 
   const { data, error } = await supabase
     .from("ordenes_compra")
@@ -33,8 +38,21 @@ export default async function OrdenesPage({
 
   const todasLasOrdenes = (data ?? []) as unknown as OrdenConRelaciones[];
   const ordenesCerradas = todasLasOrdenes.filter((o) => o.estatus === "cerrado");
-  const ordenes = mostrarCerradas ? todasLasOrdenes : todasLasOrdenes.filter((o) => o.estatus !== "cerrado");
+  const ordenesSinCerradas = mostrarCerradas ? todasLasOrdenes : todasLasOrdenes.filter((o) => o.estatus !== "cerrado");
+  const ordenes = filtroTipoEnvio
+    ? ordenesSinCerradas.filter((o) => o.tipo_envio === filtroTipoEnvio)
+    : ordenesSinCerradas;
   const puedeCrear = ROLES_QUE_CREAN_ORDENES.includes(profile.rol);
+
+  const construirHref = (opciones: { tipoEnvio?: OrdenTipoEnvio | null; mostrarCerradas?: boolean }) => {
+    const tipoEnvio = "tipoEnvio" in opciones ? opciones.tipoEnvio : filtroTipoEnvio;
+    const cerradas = opciones.mostrarCerradas ?? mostrarCerradas;
+    const params = new URLSearchParams();
+    if (cerradas) params.set("mostrar_cerradas", "1");
+    if (tipoEnvio) params.set("tipo_envio", tipoEnvio);
+    const query = params.toString();
+    return query ? `/ordenes?${query}` : "/ordenes";
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -50,11 +68,30 @@ export default async function OrdenesPage({
         )}
       </div>
 
-      <div>
-        <Link
-          href={mostrarCerradas ? "/ordenes" : "/ordenes?mostrar_cerradas=1"}
-          className="text-sm text-slate-500 hover:underline"
-        >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1">
+          <Link
+            href={construirHref({ tipoEnvio: null })}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              !filtroTipoEnvio ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Todas
+          </Link>
+          {TIPOS_ENVIO_FILTRO.map((tipo) => (
+            <Link
+              key={tipo}
+              href={construirHref({ tipoEnvio: tipo })}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                filtroTipoEnvio === tipo ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {TIPO_ENVIO_LABELS[tipo]}
+            </Link>
+          ))}
+        </div>
+
+        <Link href={construirHref({ mostrarCerradas: !mostrarCerradas })} className="text-sm text-slate-500 hover:underline">
           {mostrarCerradas ? "Ocultar cerradas" : `Mostrar cerradas (${ordenesCerradas.length})`}
         </Link>
       </div>

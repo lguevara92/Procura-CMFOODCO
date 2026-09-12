@@ -6,6 +6,7 @@ import { ROLES_STAFF } from "@/lib/constants";
 import { parseDiasTransito, promedio } from "@/lib/proveedorMetrics";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DatosBancariosForm } from "./DatosBancariosForm";
+import { EditarProveedorForm } from "./EditarProveedorForm";
 import type {
   CotizacionFlete,
   Documento,
@@ -297,12 +298,13 @@ export default async function ProveedorDetallePage({
 
 function FichaHeader({ proveedor }: { proveedor: Proveedor }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-start justify-between gap-4">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">{proveedor.nombre}</h1>
         <p className="text-sm text-slate-500">{proveedor.tipo === "compra" ? "Proveedor de compra" : "Proveedor logístico"}</p>
+        {proveedor.contacto && <p className="text-sm text-slate-500">{proveedor.contacto}</p>}
       </div>
-      {proveedor.contacto && <span className="text-sm text-slate-500">{proveedor.contacto}</span>}
+      <EditarProveedorForm proveedor={proveedor} />
     </div>
   );
 }
